@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "../../../../lib/prisma";
 import { sendSuccess, sendError } from "../../../../lib/responseHandler";
 import { ERROR_CODES } from "../../../../lib/errorCodes";
-import { verifyToken } from "../../../../lib/authMiddleware";
+import { getCurrentUser } from "../../../../lib/roleMiddleware";
 
 /**
  * GET /api/auth/me
@@ -11,10 +11,10 @@ import { verifyToken } from "../../../../lib/authMiddleware";
  */
 export async function GET(req) {
     try {
-        // Verify JWT token
-        const decoded = verifyToken(req);
+        // Get user info from middleware headers
+        const currentUser = getCurrentUser(req);
 
-        if (!decoded) {
+        if (!currentUser) {
             return sendError(
                 "Authentication required. Please provide a valid token.",
                 ERROR_CODES.UNAUTHORIZED,
@@ -24,7 +24,7 @@ export async function GET(req) {
 
         // Fetch user from database
         const user = await prisma.user.findUnique({
-            where: { id: decoded.id },
+            where: { id: currentUser.id },
             select: {
                 id: true,
                 name: true,
