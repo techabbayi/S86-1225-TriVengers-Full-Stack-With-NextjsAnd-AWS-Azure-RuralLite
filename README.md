@@ -29,6 +29,7 @@ The application allows students to access lessons, quizzes, and multimedia resou
 - Teacher-friendly CMS (cloud-hosted)
 - Low-end device compatible
 - **Secure user authentication with bcrypt and JWT** ([See Authentication Documentation](./AUTHENTICATION_README.md))
+- **Secure file uploads with AWS S3 pre-signed URLs** 
 
 ---
 
@@ -66,12 +67,13 @@ The application allows students to access lessons, quizzes, and multimedia resou
 
 > NOTE: A Prisma + PostgreSQL schema is included in `prisma/` for normalized relational data modelling (User/Team/Project/Task). See `prisma/README.md` for migration and seed steps.
 
-## 🧰 Tech Stack
-
 - **Frontend**: Next.js (React Framework)
 - **Backend**: Next.js API Routes
-- **Database**: MongoDB
-- **Cloud Services**: AWS (Lambda, S3, Cognito)
+- **Database**: PostgreSQL with Prisma ORM
+- **Cloud Services**: AWS (S3 for file storage, Lambda, Cognito)
+- **File Upload**: AWS SDK v3 with pre-signed URLs
+- **Authentication**: bcrypt + JWT
+- **Caching**: Redis (ioredis)
 - **Styling**: Tailwind CSS
 - **Deployment**: AWS / Vercel
 
@@ -94,6 +96,8 @@ S86-1225-TriVengers-Full-Stack-With-NextjsAnd-AWS-Azure-RuralLite/
 │   │   │   ├── auth/               # Authentication endpoints
 │   │   │   ├── lessons/            # Lesson CRUD operations
 │   │   │   ├── quizzes/            # Quiz endpoints
+│   │   │   ├── upload/             # File upload with pre-signed URLs
+│   │   │   ├── files/              # File metadata management
 │   │   │   └── sync/               # Background sync endpoints
 │   │   ├── globals.css             # Global styles
 │   │   ├── layout.js               # Root layout component
@@ -101,8 +105,10 @@ S86-1225-TriVengers-Full-Stack-With-NextjsAnd-AWS-Azure-RuralLite/
 │   ├── components/                 # Reusable React components
 │   │   ├── ui/                     # UI components (Button, Card, Navigation)
 │   │   ├── lessons/                # Lesson-specific components
-│   │   └── offline/                # Offline indicator & sync status
+│   │   ├── offline/                # Offline indicator & sync status
+│   │   └── FileUploader.jsx        # File upload component with S3
 │   ├── lib/                        # Utility libraries and helpers
+│   │   ├── aws-s3.js               # AWS S3 pre-signed URL configuration
 │   │   ├── db/                     # IndexedDB configuration and operations
 │   │   ├── pwa/                    # Service Worker and sync manager
 │   │   └── utils/                  # Helper functions and utilities
@@ -477,6 +483,49 @@ npm run dev
 For detailed authentication implementation, API examples, security considerations, and best practices, see:
 
 📚 **[Complete Authentication Documentation](./AUTHENTICATION_README.md)**
+
+---
+
+## 📤 File Upload with AWS S3
+
+RuralLite implements secure file uploads using **AWS S3 pre-signed URLs**, allowing students and teachers to upload documents, images, and learning materials directly to cloud storage without exposing credentials.
+
+### Key Features
+
+- **Pre-signed URLs**: Temporary upload URLs (60s expiry) for direct S3 uploads
+- **File Validation**: Type and size checks (10MB max)
+- **Secure Storage**: AWS credentials protected, never exposed to client
+- **Metadata Tracking**: File information stored in PostgreSQL
+- **Direct Upload**: Clients upload to S3 directly, bypassing backend bottlenecks
+
+### Supported File Types
+
+Images (`.jpg`, `.png`, `.gif`, `.webp`), Documents (`.pdf`, `.doc`, `.docx`, `.txt`)
+
+### Upload Flow
+
+```
+Client → Backend (generates URL) → S3 (direct upload) → Database (stores metadata)
+```
+
+### API Endpoints
+
+- `POST /api/upload` - Generate pre-signed URL
+- `POST /api/files` - Store file metadata
+- `GET /api/files` - Retrieve uploaded files
+- `DELETE /api/files` - Delete file from S3 and database
+
+### Quick Test
+
+```bash
+# Test upload flow
+.\test-file-upload.ps1
+```
+
+For complete file upload documentation, architecture details, security measures, and setup guide, see:
+
+📚 **[Complete File Upload Documentation](./FILE_UPLOAD_README.md)**  
+📚 **[Quick Setup Guide](./SETUP_GUIDE.md)**
 
 ---
 

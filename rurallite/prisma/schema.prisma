@@ -203,3 +203,19 @@ model OrderItem {
   @@index([productId])
 }
 
+// File model - Uploaded files (AWS S3 / Azure Blob)
+model File {
+  id          Int       @id @default(autoincrement())
+  userId      Int?      // Optional: track who uploaded
+  name        String    // Original filename
+  url         String    // Public/private URL to access file
+  key         String    // S3 key or blob name
+  size        Int?      // File size in bytes
+  mimeType    String    // File MIME type (image/jpeg, application/pdf, etc.)
+  uploadedAt  DateTime  @default(now())
+  expiresAt   DateTime? // Optional: for lifecycle management
+  
+  @@index([userId])
+  @@index([uploadedAt])
+}
+
