@@ -232,12 +232,15 @@ _Screenshot showing the RuralLite homepage running on localhost:3000_
 - **API Versioning**: API routes can be versioned (`api/v1/`, `api/v2/`) as needed
 
 ---
+
 ---
+
 ## 🗄️ Prisma ORM Setup
 
 ### Why Prisma?
 
 Prisma is our chosen ORM for RuralLite because it provides:
+
 - **Type Safety**: Auto-generated TypeScript types prevent runtime errors
 - **PostgreSQL Support**: Robust relational database for complex queries and data integrity
 - **Developer Experience**: Intuitive API and excellent tooling
@@ -249,6 +252,7 @@ Prisma is our chosen ORM for RuralLite because it provides:
 Our schema is designed specifically for offline-first rural education:
 
 #### Core Models:
+
 - **User**: Students, Teachers, and Admins with role-based access
 - **Lesson**: Educational content with offline caching metadata (download size, media URLs)
 - **Quiz**: Assessments with time limits and configurable passing scores
@@ -259,6 +263,7 @@ Our schema is designed specifically for offline-first rural education:
 - **Note**: Student notes with tag support and offline sync capability
 
 #### Key Design Decisions:
+
 - **PostgreSQL**: Relational integrity, ACID compliance, and powerful querying
 - **Separate Tables**: Question and Answer are separate tables (not embedded) for flexibility
 - **Sync Tracking**: `syncedAt` fields track offline-to-cloud synchronization
@@ -282,7 +287,7 @@ model Lesson {
   difficulty  Difficulty @default(BEGINNER)
   isOffline   Boolean   @default(true)
   downloadSize Int?     // KB for offline planning
-  
+
   quizzes     Quiz[]
   progress    Progress[]
 }
@@ -294,10 +299,10 @@ model Progress {
   completed   Boolean   @default(false)
   progress    Int       @default(0)
   syncedAt    DateTime? // Tracks cloud sync
-  
+
   user        User      @relation(fields: [userId], references: [id])
   lesson      Lesson    @relation(fields: [lessonId], references: [id])
-  
+
   @@unique([userId, lessonId])
   @@index([userId])
 }
@@ -306,6 +311,7 @@ model Progress {
 ### Setup Steps
 
 1. **Install Prisma**
+
    ```bash
    cd rurallite
    npm install prisma @prisma/client --save-dev
@@ -317,18 +323,20 @@ model Progress {
    - Use `.env.example` as reference
 
 3. **Generate Prisma Client**
+
    ```bash
    npx prisma generate
    ```
 
 4. **Push Schema to Database**
+
    ```bash
    npx prisma db push
    ```
 
 5. **Test Connection**
    ```typescript
-   import { prisma } from '@/lib/prisma';
+   import { prisma } from "@/lib/prisma";
    const users = await prisma.user.findMany();
    ```
 
@@ -337,18 +345,17 @@ model Progress {
 Created singleton Prisma client at `lib/prisma.js`:
 
 ```typescript
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from "@prisma/client";
 
 const globalForPrisma = global as unknown as { prisma: PrismaClient };
 
 export const prisma =
   globalForPrisma.prisma ||
   new PrismaClient({
-    log: ['query', 'info', 'warn', 'error'],
+    log: ["query", "info", "warn", "error"],
   });
 
-if (process.env.NODE_ENV !== 'production') 
-  globalForPrisma.prisma = prisma;
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 ```
 
 **Why Singleton?** Prevents multiple Prisma instances during development hot-reloading, avoiding database connection exhaustion.
@@ -356,6 +363,7 @@ if (process.env.NODE_ENV !== 'production')
 ### Testing & Verification
 
 Test queries available in `lib/db/test-connection.js`:
+
 - Connection verification
 - Sample lesson creation
 - Query examples for all models
@@ -397,16 +405,17 @@ RuralLite implements a secure authentication system using industry-standard prac
 
 ### API Endpoints
 
-| Endpoint | Method | Description | Auth Required |
-|----------|--------|-------------|---------------|
-| `/api/auth/signup` | POST | Register new user | ❌ |
-| `/api/auth/login` | POST | Authenticate user & get token | ❌ |
-| `/api/auth/me` | GET | Get current user profile | ✅ |
-| `/api/users` | GET | List all users (paginated) | ✅ |
+| Endpoint           | Method | Description                   | Auth Required |
+| ------------------ | ------ | ----------------------------- | ------------- |
+| `/api/auth/signup` | POST   | Register new user             | ❌            |
+| `/api/auth/login`  | POST   | Authenticate user & get token | ❌            |
+| `/api/auth/me`     | GET    | Get current user profile      | ✅            |
+| `/api/users`       | GET    | List all users (paginated)    | ✅            |
 
 ### Quick Start
 
 **1. Signup:**
+
 ```bash
 curl -X POST http://localhost:3000/api/auth/signup \
   -H "Content-Type: application/json" \
@@ -414,6 +423,7 @@ curl -X POST http://localhost:3000/api/auth/signup \
 ```
 
 **2. Login:**
+
 ```bash
 curl -X POST http://localhost:3000/api/auth/login \
   -H "Content-Type: application/json" \
@@ -421,6 +431,7 @@ curl -X POST http://localhost:3000/api/auth/login \
 ```
 
 **3. Access Protected Route:**
+
 ```bash
 curl -X GET http://localhost:3000/api/auth/me \
   -H "Authorization: Bearer YOUR_TOKEN_HERE"
@@ -429,11 +440,13 @@ curl -X GET http://localhost:3000/api/auth/me \
 ### Environment Variables
 
 Add to your `.env.local`:
+
 ```env
 JWT_SECRET="your-super-secret-jwt-key-change-in-production"
 ```
 
 **Generate a secure secret:**
+
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
@@ -441,6 +454,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ### Testing
 
 Use the provided test scripts:
+
 ```powershell
 # Start server
 cd rurallite
@@ -617,7 +631,6 @@ Built with ❤️ for improving rural education accessibility
 - [x] Added benchmark script (`rurallite/scripts/bench_index_flip.js`) and captured real `EXPLAIN ANALYZE` outputs (`rurallite/benchmarks/real_before.txt`, `rurallite/benchmarks/real_after.txt`)
 - [x] Documented workflow and findings in `rurallite/TRANSACTIONS_AND_INDEXES.md`
 
-
 ## � Day 5 — Global API Response Handler
 
 - [x] **Utility:** Added a unified response handler `rurallite/lib/responseHandler.js` exposing `sendSuccess` / `sendError` and helpers `buildSuccess` / `buildError` for envelope construction and typing.
@@ -681,15 +694,40 @@ curl -X POST http://localhost:3000/api/users \
   "timestamp": "2025-12-17T...Z"
 }
 ```
+
 ## � Day 7 — Error Handling Middleware
+
 - [x] Centralized error handling implemented in `rurallite/lib/errorHandler.js` (exports `handleError`).
 - [x] Structured JSON logging in `rurallite/lib/logger.js`.
 - [x] Unit tests:
-    - `rurallite/tests/errorHandler.test.ts`
-    - `rurallite/tests/logger.test.ts`
+  - `rurallite/tests/errorHandler.test.ts`
+  - `rurallite/tests/logger.test.ts`
 - [x] Run tests (from repo root):
-    - `npm test --prefix rurallite` (or from `rurallite/`: `npm test`)
+  - `npm test --prefix rurallite` (or from `rurallite/`: `npm test`)
 - Note for Windows: run tests in Command Prompt (cmd) or use `npm.cmd` if PowerShell blocks scripts.
+
+## Day 8 - Redis Caching Layer
+
+- Redis client: `ioredis` is configured in `rurallite/lib/redis.js` using `REDIS_URL` (defaults to `redis://localhost:6379`) with a single shared connection and health logs for ready/error/reconnect events.
+- Cached endpoint: GET `/api/users` now uses a cache-aside strategy in `rurallite/app/api/users/route.js` with key pattern `users:list:p{page}:l{limit}` and a 60 second TTL. Cache reads/writes are wrapped so the route falls back to Prisma when Redis is unavailable.
+- Invalidation: POST `/api/users` clears keys matching `users:list:*` after creating a user to prevent stale pagination results. Extend the same pattern to future update/delete endpoints.
+- Behavior snapshot (excerpt):
+
+```js
+// rurallite/app/api/users/route.js
+const cacheKey = `users:list:p${page}:l${limit}`;
+const cached = await redis.get(cacheKey);
+// ...on miss: fetch from Prisma then seed cache for 60s
+await redis.set(cacheKey, JSON.stringify({ users, meta }), "EX", 60);
+```
+
+- How to observe:
+  - Ensure Redis is running (`docker-compose up redis` or your managed endpoint).
+  - First call: `curl -X GET http://localhost:3000/api/users` logs a cache miss and hits the database.
+  - Second call within 60s: logs `users:list cache hit` and returns faster (compare timestamps or use a local timer to see latency drop versus the cold call).
+  - Inspect keys and TTLs: `docker-compose exec redis redis-cli keys "users:list:*"` and `ttl <key>`.
+- Stale data considerations: TTL and post-create invalidation limit staleness to roughly 60 seconds. Avoid caching endpoints that change every request or need real-time freshness; for read-heavy lists (users, lessons, quizzes) the current policy favors latency and lower DB load.
+
 ## �🐳 Docker & Docker Compose Setup
 
 ### Overview
