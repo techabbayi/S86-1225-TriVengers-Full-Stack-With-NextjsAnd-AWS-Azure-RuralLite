@@ -802,6 +802,65 @@ By treating schema changes as versioned code, we ensure consistency across devel
 
 ## Learn More
 
+---
+
+## Input Sanitization & OWASP Compliance ✅
+
+### Overview
+
+To protect against XSS (Cross-Site Scripting) and SQL Injection (SQLi), we implemented input sanitization and output encoding following OWASP best practices. All user-provided data is sanitized before being stored or rendered.
+
+### Sanitization Utility
+
+We use the [sanitize-html](https://www.npmjs.com/package/sanitize-html) library via a utility at `lib/utils/sanitize.js`:
+
+```js
+import sanitizeHtml from 'sanitize-html';
+export const sanitizeInput = (input) => sanitizeHtml(input, { allowedTags: [], allowedAttributes: {} });
+```
+
+### Usage in API
+
+All API routes that accept user input (e.g., `/api/notes`) sanitize fields before saving to the database:
+
+```js
+import { sanitizeInput } from "@/lib/utils/sanitize";
+const cleanContent = sanitizeInput(req.body.content);
+```
+
+### Usage in UI
+
+User content is always rendered as plain text (never using `dangerouslySetInnerHTML`). React auto-escapes by default, but we also sanitize on display for defense-in-depth:
+
+```jsx
+<div>{sanitizeInput(userComment)}</div>
+```
+
+### SQL Injection Prevention
+
+All database queries use Prisma's parameterized methods. No dynamic SQL is constructed from user input.
+
+### Before/After Demo
+
+- Visit `/notes` and use the **Test Note Input Sanitization** form.
+- Try submitting `<script>alert('XSS')</script>` or `'; DROP TABLE users; --` as note content.
+- **Before sanitization:** Malicious input could be stored and rendered, causing XSS or SQLi.
+- **After sanitization:** Input is cleaned and stored safely. Scripts/tags are stripped, and SQLi is impossible.
+
+**Example:**
+
+| Input                        | Stored/Displayed Result         |
+|------------------------------|---------------------------------|
+| `<script>alert('XSS')</script>` | `alert('XSS')`                  |
+| `'; DROP TABLE users; --`       | `'; DROP TABLE users; --`        |
+
+### Reflection
+
+- **Why:** XSS and SQLi are among the most critical web vulnerabilities. Sanitizing and encoding all user input/output is essential for modern web security.
+- **Ongoing:** Security is a continuous process. We will review dependencies, add validation schemas, and consider CSP and secure headers for further hardening.
+
+---
+
 To learn more about Next.js, take a look at the following resources:
 
 - [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
