@@ -1,6 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
+import dynamic from "next/dynamic";
+
+// Dynamically import the NotesTestForm for demo
+const NotesTestForm = dynamic(() => import("../../components/NotesTestForm"), { ssr: false });
 import useSWR, { mutate } from "swr";
 import { fetcher } from "@/lib/fetcher";
 
@@ -101,6 +105,8 @@ export default function NotesPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-10">
+      {/* Demo: Test input sanitization form */}
+      <NotesTestForm />
       <h1 className="text-3xl font-bold mb-6">Notes</h1>
 
       {/* Create Note Form */}
