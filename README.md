@@ -1,3 +1,74 @@
+# Secure Environment Variable Management (Cloud)
+
+## 1. Secret Storage
+
+- **Cloud Service Used:** AWS Secrets Manager / Azure Key Vault (choose based on deployment)
+- **Secret Example:**
+  - `DATABASE_URL`
+  - `JWT_SECRET`
+- **How to Add:**
+  - **AWS:** Store as key-value pairs in Secrets Manager (e.g., `nextjs/app-secrets`).
+  - **Azure:** Add secrets to Key Vault via portal or CLI.
+
+## 2. Retrieval at Runtime
+
+- **AWS Example:**
+  ```js
+  import AWS from 'aws-sdk';
+  const client = new AWS.SecretsManager({ region: process.env.AWS_REGION });
+  export async function getSecrets() {
+    const response = await client.getSecretValue({ SecretId: process.env.SECRET_ARN }).promise();
+    return JSON.parse(response.SecretString);
+  }
+  ```
+- **Azure Example:**
+  ```js
+  import { SecretClient } from '@azure/keyvault-secrets';
+  import { DefaultAzureCredential } from '@azure/identity';
+  const vaultUrl = `https://${process.env.KEYVAULT_NAME}.vault.azure.net`;
+  const client = new SecretClient(vaultUrl, new DefaultAzureCredential());
+  export async function getSecret(name) {
+    const secret = await client.getSecret(name);
+    return secret.value;
+  }
+  ```
+
+## 3. Access Control
+
+- **AWS:**
+  - Use IAM roles/users with `secretsmanager:GetSecretValue` permission for the specific secret ARN.
+- **Azure:**
+  - Use Access Policies or Managed Identity with `get`/`list` permissions for secrets.
+
+## 4. Rotation Strategy
+
+- **Rotation Frequency:**
+  - Secrets (e.g., passwords, API keys) are rotated monthly or as required.
+- **Rotation Method:**
+  - Use built-in rotation features of AWS Secrets Manager or Azure Key Vault.
+- **Access Review:**
+  - Regularly audit IAM roles and Key Vault policies for least-privilege access.
+
+## 5. Verification
+
+- **How to Verify:**
+  - Log retrieved secret keys in your app (never log values in production).
+  - Example: `console.log('Retrieved secrets:', Object.keys(secrets));`
+  - Capture screenshots of secret in the cloud console and successful retrieval in logs.
+
+## 6. Reflections & Improvements
+
+- **Current Practice:**
+  - Secrets are never stored in `.env` for production.
+  - All access is via cloud-managed secret stores.
+- **Potential Improvements:**
+  - Integrate secret retrieval with CI/CD pipelines for automated deployments.
+  - Enable alerting for secret access or failed retrieval attempts.
+
+---
+
+**Summary:**
+This project uses cloud-managed secret storage (AWS Secrets Manager or Azure Key Vault) to securely store and retrieve environment variables at runtime. Access is tightly controlled using IAM or Managed Identities, and secrets are rotated regularly. This approach minimizes risk of credential leaks and supports secure, scalable deployments.
 # 📘 RuralLite Learning Platform
 
 ### Offline-First Educational Web App for Low-Bandwidth Rural Schools
