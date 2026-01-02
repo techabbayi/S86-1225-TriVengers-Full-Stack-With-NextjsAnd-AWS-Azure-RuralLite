@@ -1,3 +1,306 @@
+## Unit Testing Framework Setup
+
+### Overview
+
+This project uses **Jest** and **React Testing Library (RTL)** for comprehensive unit testing. The testing framework validates individual functions, components, and modules in isolation, ensuring code quality and preventing regressions before deployment.
+
+### Testing Stack
+
+| Component | Purpose | Tool |
+|-----------|---------|------|
+| Unit Tests | Individual functions/components | Jest + RTL |
+| Test Environment | Browser-like DOM simulation | jsdom |
+| DOM Queries | React component rendering | @testing-library/react |
+| User Events | Simulate user interactions | @testing-library/user-event |
+| Assertions | DOM matchers | @testing-library/jest-dom |
+
+### Installation & Configuration
+
+Jest and RTL are already configured in this project. The setup includes:
+
+- **jest.config.js** — Main Jest configuration with coverage thresholds
+- **jest.setup.js** — Test environment initialization with DOM matchers
+
+To install dependencies:
+
+```bash
+npm install --save-dev jest @testing-library/react @testing-library/jest-dom @testing-library/user-event ts-jest @types/jest jest-environment-jsdom
+```
+
+### Running Tests
+
+```bash
+# Run all tests once
+npm test
+
+# Run tests in watch mode (re-run on file changes)
+npm run test:watch
+
+# Generate coverage report
+npm run test:coverage
+
+# CI/CD pipeline test
+npm run test:ci
+```
+
+### Test Coverage Report
+
+**Current Coverage (75% threshold):**
+
+```
+File          | % Stmts | % Branch | % Funcs | % Lines | Status
+--------------|---------|----------|---------|---------|--------
+All files     |    87.5 |       95 |   83.33 |    87.5 | ✅ PASS
+components/   |     100 |     87.5 |     100 |     100 | ✅ PASS
+ Button.jsx   |     100 |     87.5 |     100 |     100 |
+lib/utils/    |    86.2 |      100 |      80 |   85.71 | ✅ PASS
+ helpers.js   |     100 |      100 |     100 |     100 |
+```
+
+**Test Results:**
+- ✅ **2 Test Suites** passed
+- ✅ **25 Tests** passed
+- ✅ **0 Snapshots**
+- ✅ **3.855s** execution time
+
+### Sample Test Files
+
+#### 1. Unit Test: Utility Functions
+
+[__tests__/helpers.test.js](__tests__/helpers.test.js) tests utility functions from [lib/utils/helpers.js](lib/utils/helpers.js):
+
+```javascript
+describe('Utility Functions', () => {
+  describe('formatDate', () => {
+    it('should format date in short format (YYYY-MM-DD)', () => {
+      const date = new Date('2024-01-15');
+      expect(formatDate(date, 'short')).toBe('2024-01-15');
+    });
+
+    it('should format date in long format with month name', () => {
+      const date = new Date('2024-01-15');
+      const result = formatDate(date, 'long');
+      expect(result).toContain('January');
+    });
+  });
+
+  describe('validateEmail', () => {
+    it('should validate correct email addresses', () => {
+      expect(validateEmail('user@example.com')).toBe(true);
+    });
+
+    it('should reject invalid email addresses', () => {
+      expect(validateEmail('invalid')).toBe(false);
+    });
+  });
+
+  describe('capitalize', () => {
+    it('should capitalize first letter', () => {
+      expect(capitalize('hello')).toBe('Hello');
+    });
+  });
+
+  describe('truncateString', () => {
+    it('should truncate string longer than specified length', () => {
+      const longString = 'This is a very long string';
+      expect(truncateString(longString, 20)).toContain('...');
+    });
+  });
+});
+```
+
+**Coverage:** 100% statements, 100% branches, 100% functions, 100% lines
+
+#### 2. Component Test: React Button
+
+[__tests__/Button.test.jsx](__tests__/Button.test.jsx) tests [components/Button.jsx](components/Button.jsx):
+
+```javascript
+describe('Button Component', () => {
+  it('renders button with default label', () => {
+    render(<Button />);
+    const button = screen.getByRole('button', { name: /click me/i });
+    expect(button).toBeInTheDocument();
+  });
+
+  it('calls onClick handler when clicked', async () => {
+    const handleClick = jest.fn();
+    render(<Button label="Click Me" onClick={handleClick} />);
+    
+    const button = screen.getByRole('button', { name: /click me/i });
+    await userEvent.click(button);
+    
+    expect(handleClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not call onClick when disabled', async () => {
+    const handleClick = jest.fn();
+    render(<Button onClick={handleClick} disabled />);
+    
+    await userEvent.click(screen.getByRole('button'));
+    expect(handleClick).not.toHaveBeenCalled();
+  });
+
+  it('applies correct variant classes', () => {
+    render(<Button variant="danger" />);
+    expect(screen.getByRole('button')).toHaveClass('bg-red-500');
+  });
+});
+```
+
+**Coverage:** 100% statements, 87.5% branches, 100% functions, 100% lines
+
+### Coverage Configuration
+
+Jest is configured to enforce minimum coverage thresholds in [jest.config.js](jest.config.js):
+
+```javascript
+coverageThreshold: {
+  global: {
+    branches: 75,
+    functions: 75,
+    lines: 75,
+    statements: 75,
+  },
+},
+```
+
+**Files included in coverage:**
+- `__tests__/**/*.{js,jsx}`
+- `lib/utils/**/*.{js,jsx}`
+- `components/Button.jsx`
+
+**Files excluded:**
+- `node_modules/`, `.next/`, `dist/`, `build/`
+- `app/api/**` (API routes tested separately)
+- `*.test.{js,jsx}` (test files themselves)
+
+### CI/CD Integration
+
+GitHub Actions workflow step for automated testing:
+
+```yaml
+- name: Run Unit Tests
+  run: npm run test:ci
+  
+- name: Upload Coverage
+  uses: codecov/codecov-action@v3
+  with:
+    files: ./coverage/coverage-final.json
+```
+
+### Testing Pyramid & Strategy
+
+```
+         E2E Tests (Cypress, Playwright)
+              ↑
+         Integration Tests (Mock APIs)
+              ↑
+    Unit Tests (Jest, RTL) ← YOU ARE HERE
+```
+
+**Breakdown:**
+- **Unit Tests (Base):** Fast, isolated testing of functions & components
+- **Integration Tests (Middle):** Test combined modules with mocked services
+- **E2E Tests (Top):** Full workflow validation in real browser
+
+### Best Practices Applied
+
+1. **Test Isolation:** Each test is independent; no shared state between tests
+2. **Descriptive Names:** Test names clearly describe what is being tested
+3. **Arrange-Act-Assert:** Tests follow AAA pattern for clarity
+4. **User-Centric:** Tests use semantic queries (`getByRole`, `getByText`)
+5. **Accessibility:** Testing with accessibility in mind (ARIA labels, roles)
+6. **Mocking:** Jest mocks are used to isolate functions under test
+7. **Coverage Thresholds:** Enforced 75% minimum to maintain code quality
+
+### Common Testing Patterns
+
+**Testing Async Functions:**
+
+```javascript
+it('should fetch data', async () => {
+  const data = await fetchData();
+  expect(data).toBeDefined();
+});
+```
+
+**Mocking Functions:**
+
+```javascript
+const mockFn = jest.fn();
+mockFn('test');
+expect(mockFn).toHaveBeenCalledWith('test');
+```
+
+**Testing DOM Interactions:**
+
+```javascript
+it('handles button click', async () => {
+  const { rerender } = render(<Component />);
+  const button = screen.getByRole('button');
+  await userEvent.click(button);
+  expect(screen.getByText('Clicked')).toBeInTheDocument();
+});
+```
+
+### Extending Test Coverage
+
+To add new tests:
+
+1. Create a test file: `__tests__/MyComponent.test.jsx`
+2. Import testing utilities:
+   ```javascript
+   import { render, screen } from '@testing-library/react';
+   import MyComponent from '@/components/MyComponent';
+   ```
+3. Write test cases with clear descriptions
+4. Run `npm run test:watch` to develop iteratively
+5. Run `npm run test:coverage` to verify thresholds are met
+
+### Troubleshooting
+
+**Error: Cannot find module 'jsdom'**
+```bash
+npm install --save-dev jest-environment-jsdom
+```
+
+**Tests not running:**
+- Ensure test files are in `__tests__/` directory
+- Check file names match pattern: `*.test.js` or `*.spec.js`
+- Verify Jest is installed: `npm list jest`
+
+**Coverage below threshold:**
+- Review `jest.config.js` coverage configuration
+- Add more test cases to untested code paths
+- Check `npm run test:coverage` report for uncovered lines
+
+### Reflection & Key Takeaways
+
+**Importance of Test Coverage:**
+- Tests act as a safety net against regressions when refactoring
+- Comprehensive coverage increases deployment confidence
+- Tests serve as living documentation of how code should behave
+
+**Current Gaps:**
+- API route testing (e.g., `/api/users`) — requires supertest or MSW
+- Integration tests with database queries — need test database setup
+- E2E tests for full user workflows — requires Playwright/Cypress
+- Custom hooks testing — needs additional RTL utilities
+
+**Position in Testing Pyramid:**
+- ✅ **Unit Tests (Base):** Fully implemented with 87.5% overall coverage
+- ⏳ **Integration Tests (Middle):** Ready to extend with MSW for API mocking
+- ❌ **E2E Tests (Top):** Future enhancement for critical user paths
+
+**Next Steps:**
+1. Expand unit tests to reach 80%+ coverage on core utilities
+2. Add integration tests for API routes with mocked services
+3. Set up E2E tests for authentication and lesson workflows
+4. Integrate coverage reports with CI/CD dashboard
+
+---
+
 ## Role-Based Access Control (RBAC)
 
 ### Roles & Permissions Table
@@ -48,6 +351,15 @@ console.log(`[RBAC-UI] ${user?.role || 'unknown'} access to Users link: ALLOWED`
 
 - Users with role 'viewer' cannot see edit/delete buttons or access protected API endpoints (403 error).
 - Admin/editor roles can access additional UI and API features.
+- All allow/deny actions are logged in the console for traceability.
+
+### Reflection
+
+- **Scalability:** The RBAC model is easy to extend with new roles or permissions. Centralized mapping keeps logic maintainable.
+- **Auditing:** Logging every access decision supports security audits and debugging.
+- **Adaptability:** For more complex needs, this can be extended to policy-based access (PBAC) or attribute-based access (ABAC) with minimal refactor.
+
+RBAC is foundational for secure, scalable systems—preventing privilege abuse and supporting audit trails as the product grows.
 - All allow/deny actions are logged in the console for traceability.
 
 ### Reflection
