@@ -8,31 +8,31 @@ import { ERROR_CODES } from "./errorCodes";
  * @returns {Object|Response} - User info or error response
  */
 export function checkRole(req, allowedRoles) {
-    const userRole = req.headers.get("x-user-role");
-    const userId = req.headers.get("x-user-id");
-    const userEmail = req.headers.get("x-user-email");
+  const userRole = req.headers.get("x-user-role");
+  const userId = req.headers.get("x-user-id");
+  const userEmail = req.headers.get("x-user-email");
 
-    if (!userRole || !userId) {
-        return sendError(
-            "Authorization failed. User information missing.",
-            ERROR_CODES.UNAUTHORIZED,
-            401
-        );
-    }
+  if (!userRole || !userId) {
+    return sendError(
+      "Authorization failed. User information missing.",
+      ERROR_CODES.UNAUTHORIZED,
+      401
+    );
+  }
 
-    if (!allowedRoles.includes(userRole)) {
-        return sendError(
-            `Access denied. Required role: ${allowedRoles.join(" or ")}. Your role: ${userRole}`,
-            ERROR_CODES.UNAUTHORIZED,
-            403
-        );
-    }
+  if (!allowedRoles.includes(userRole)) {
+    return sendError(
+      `Access denied. Required role: ${allowedRoles.join(" or ")}. Your role: ${userRole}`,
+      ERROR_CODES.UNAUTHORIZED,
+      403
+    );
+  }
 
-    return {
-        id: parseInt(userId),
-        email: userEmail,
-        role: userRole,
-    };
+  return {
+    id: userId,
+    email: userEmail,
+    role: userRole,
+  };
 }
 
 /**
@@ -41,8 +41,8 @@ export function checkRole(req, allowedRoles) {
  * @returns {boolean}
  */
 export function isAdmin(req) {
-    const userRole = req.headers.get("x-user-role");
-    return userRole === "ADMIN";
+  const userRole = req.headers.get("x-user-role");
+  return userRole === "ADMIN";
 }
 
 /**
@@ -51,8 +51,8 @@ export function isAdmin(req) {
  * @returns {boolean}
  */
 export function isTeacherOrAdmin(req) {
-    const userRole = req.headers.get("x-user-role");
-    return userRole === "ADMIN" || userRole === "TEACHER";
+  const userRole = req.headers.get("x-user-role");
+  return userRole === "ADMIN" || userRole === "TEACHER";
 }
 
 /**
@@ -61,17 +61,17 @@ export function isTeacherOrAdmin(req) {
  * @returns {Object|null} - User object or null
  */
 export function getCurrentUser(req) {
-    const userId = req.headers.get("x-user-id");
-    const userEmail = req.headers.get("x-user-email");
-    const userRole = req.headers.get("x-user-role");
+  const userId = req.headers.get("x-user-id");
+  const userEmail = req.headers.get("x-user-email");
+  const userRole = req.headers.get("x-user-role");
 
-    if (!userId || !userEmail || !userRole) {
-        return null;
-    }
+  if (!userId || !userEmail || !userRole) {
+    return null;
+  }
 
-    return {
-        id: parseInt(userId),
-        email: userEmail,
-        role: userRole,
-    };
+  return {
+    id: parseInt(userId),
+    email: userEmail,
+    role: userRole,
+  };
 }

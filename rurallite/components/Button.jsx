@@ -1,6 +1,10 @@
 "use client";
-import React from "react";
-/** * Simple Button component for testing */ export default function Button({
+import React, { memo } from "react";
+
+/**
+ * Simple Button component for testing - Optimized with React.memo
+ */
+const Button = memo(function Button({
   label = "Click me",
   onClick,
   disabled = false,
@@ -13,6 +17,7 @@ import React from "react";
     secondary: "bg-gray-500 hover:bg-gray-600 text-white",
     danger: "bg-red-500 hover:bg-red-600 text-white",
   };
+
   return (
     <button
       onClick={onClick}
@@ -21,8 +26,9 @@ import React from "react";
       data-testid="test-button"
       aria-label={label}
     >
-      {" "}
-      {label}{" "}
+      {label}
     </button>
   );
-}
+});
+
+export default Button;

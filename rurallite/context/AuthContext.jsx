@@ -8,6 +8,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { refreshAccessToken } from "@/lib/authClient";
 
 const STORAGE_KEYS = {
   token: "authToken",
@@ -48,21 +49,53 @@ export function AuthProvider({ children }) {
   const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
-  const [status, setStatus] = useState("unauthenticated");
+  const [status, setStatus] = useState("loading");
   const [error, setError] = useState(null);
 
-  // Initialize auth state only on client side to avoid hydration mismatch
+  // Initialize and validate auth state on client side
   useEffect(() => {
-    const storedUser = readStoredUser();
-    const storedToken = readStoredToken();
+    const initAuth = async () => {
+      const storedUser = readStoredUser();
+      const storedToken = readStoredToken();
 
-    if (storedUser && storedToken) {
-      setUser(storedUser);
-      setToken(storedToken);
-      setStatus("authenticated");
-    }
+      if (storedUser && storedToken) {
+        // Validate token by calling /api/auth/me
+        try {
+          const response = await fetch("/api/auth/me", {
+            headers: {
+              Authorization: `Bearer ${storedToken}`,
+            },
+          });
 
-    setMounted(true);
+          if (response.ok) {
+            const data = await response.json();
+            if (data?.success && data?.data) {
+              setUser(data.data);
+              setToken(storedToken);
+              setStatus("authenticated");
+            } else {
+              // Invalid response, clear auth
+              clearSession();
+              setStatus("unauthenticated");
+            }
+          } else {
+            // Token invalid or expired, clear auth
+            clearSession();
+            setStatus("unauthenticated");
+          }
+        } catch (err) {
+          // Network error or other issue, clear auth
+          clearSession();
+          setStatus("unauthenticated");
+        }
+      } else {
+        setStatus("unauthenticated");
+      }
+
+      setMounted(true);
+    };
+
+    initAuth();
   }, []);
 
   // Handle tab visibility changes and storage events for cross-tab sync
@@ -135,9 +168,16 @@ export function AuthProvider({ children }) {
         body: JSON.stringify(credentials),
       });
 
+      if (!response.ok) {
+        const message = `Login failed with status ${response.status}`;
+        setError(message);
+        setStatus("unauthenticated");
+        return { success: false, message };
+      }
+
       const data = await response.json();
 
-      if (!response.ok || !data?.success) {
+      if (!data?.success) {
         const message = data?.message || "Login failed. Please try again.";
         setError(message);
         setStatus("unauthenticated");
@@ -193,9 +233,42 @@ export function AuthProvider({ children }) {
         },
       });
 
+      if (!response.ok) {
+        // Try to refresh the token if 401
+        if (response.status === 401) {
+          const newToken = await refreshAccessToken();
+          if (newToken) {
+            // Retry with new token
+            const retryResponse = await fetch("/api/auth/me", {
+              headers: {
+                Authorization: `Bearer ${newToken}`,
+              },
+            });
+
+            if (retryResponse.ok) {
+              const data = await retryResponse.json();
+              if (data?.success && data?.data) {
+                persistSession(newToken, data.data);
+                setUser(data.data);
+                setToken(newToken);
+                setStatus("authenticated");
+                return data.data;
+              }
+            }
+          }
+        }
+
+        // If refresh failed or other error, logout
+        clearSession();
+        setUser(null);
+        setToken(null);
+        setStatus("unauthenticated");
+        return null;
+      }
+
       const data = await response.json();
 
-      if (response.ok && data?.success && data?.data) {
+      if (data?.success && data?.data) {
         persistSession(token, data.data);
         setUser(data.data);
         setStatus("authenticated");

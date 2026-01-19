@@ -1,297 +1,134 @@
-# Secure Environment Variable Management (Cloud)
-
-## 1. Secret Storage
-
-- **Cloud Service Used:** AWS Secrets Manager / Azure Key Vault (choose based on deployment)
-- **Secret Example:**
-  - `DATABASE_URL`
-  - `JWT_SECRET`
-- **How to Add:**
-  - **AWS:** Store as key-value pairs in Secrets Manager (e.g., `nextjs/app-secrets`).
-  - **Azure:** Add secrets to Key Vault via portal or CLI.
-
-## 2. Retrieval at Runtime
-
-- **AWS Example:**
-  ```js
-  import AWS from 'aws-sdk';
-  const client = new AWS.SecretsManager({ region: process.env.AWS_REGION });
-  export async function getSecrets() {
-    const response = await client.getSecretValue({ SecretId: process.env.SECRET_ARN }).promise();
-    return JSON.parse(response.SecretString);
-  }
-  ```
-- **Azure Example:**
-  ```js
-  import { SecretClient } from '@azure/keyvault-secrets';
-  import { DefaultAzureCredential } from '@azure/identity';
-  const vaultUrl = `https://${process.env.KEYVAULT_NAME}.vault.azure.net`;
-  const client = new SecretClient(vaultUrl, new DefaultAzureCredential());
-  export async function getSecret(name) {
-    const secret = await client.getSecret(name);
-    return secret.value;
-  }
-  ```
-
-## 3. Access Control
-
-- **AWS:**
-  - Use IAM roles/users with `secretsmanager:GetSecretValue` permission for the specific secret ARN.
-- **Azure:**
-  - Use Access Policies or Managed Identity with `get`/`list` permissions for secrets.
-
-## 4. Rotation Strategy
-
-- **Rotation Frequency:**
-  - Secrets (e.g., passwords, API keys) are rotated monthly or as required.
-- **Rotation Method:**
-  - Use built-in rotation features of AWS Secrets Manager or Azure Key Vault.
-- **Access Review:**
-  - Regularly audit IAM roles and Key Vault policies for least-privilege access.
-
-## 5. Verification
-
-- **How to Verify:**
-  - Log retrieved secret keys in your app (never log values in production).
-  - Example: `console.log('Retrieved secrets:', Object.keys(secrets));`
-  - Capture screenshots of secret in the cloud console and successful retrieval in logs.
-
-## 6. Reflections & Improvements
-
-- **Current Practice:**
-  - Secrets are never stored in `.env` for production.
-  - All access is via cloud-managed secret stores.
-- **Potential Improvements:**
-  - Integrate secret retrieval with CI/CD pipelines for automated deployments.
-  - Enable alerting for secret access or failed retrieval attempts.
-
----
-
-**Summary:**
-This project uses cloud-managed secret storage (AWS Secrets Manager or Azure Key Vault) to securely store and retrieve environment variables at runtime. Access is tightly controlled using IAM or Managed Identities, and secrets are rotated regularly. This approach minimizes risk of credential leaks and supports secure, scalable deployments.
-
-# 🚀 CI/CD Pipeline
-
-## GitHub Actions Workflows
-
-This project uses GitHub Actions for automated testing, building, and deployment. The CI/CD pipeline consists of three main workflows:
-
-### 1. **Main CI Pipeline** (`.github/workflows/ci.yml`)
-
-**Purpose:** Validates every code change through comprehensive testing and building stages.
-
-**Stages:**
-- **Lint** → Code style and quality checks using ESLint
-- **Test** → Unit tests with coverage reporting using Vitest
-- **Build** → Next.js application build verification
-- **Security** → Dependency vulnerability scanning
-- **Deploy** → Automated deployment to staging/production
-
-**Triggers:**
-- Push to `main` or `develop` branches
-- Pull requests to `main` or `develop`
-- Manual workflow dispatch
-
-**Key Features:**
-- ✅ Parallel job execution for faster CI runs
-- ✅ PostgreSQL and Redis services for database testing
-- ✅ Build caching for improved performance
-- ✅ Artifact uploads for deployment stages
-- ✅ Environment-based deployments (staging/production)
-
-### 2. **Integration Testing** (`.github/workflows/integration-tests.yml`)
-
-**Purpose:** End-to-end API testing with real database and services.
-
-**Features:**
-- Full application startup with database seeding
-- API route testing using existing test scripts
-- Security headers validation
-- Automated test reporting in PR comments
-- Daily scheduled runs for continuous monitoring
-
-### 3. **Docker Build & Push** (`.github/workflows/docker.yml`)
-
-**Purpose:** Containerization and deployment automation.
-
-**Features:**
-- Multi-platform Docker builds (AMD64/ARM64)
-- Container security scanning with Trivy
-- GitHub Container Registry publishing
-- Automated deployment on main branch pushes
-
-## CI/CD Benefits
-
-### 🔄 **Continuous Integration**
-- Every code change is automatically validated
-- Early detection of bugs and integration issues
-- Consistent code quality enforcement
-- Automated dependency security checks
-
-### 🚀 **Continuous Deployment**
-- Zero-downtime deployments
-- Environment-specific configurations
-- Rollback capabilities with tagged releases
-- Infrastructure as Code (Docker containers)
-
-### 📊 **Quality Assurance**
-- Code coverage reporting
-- Security vulnerability scanning
-- Performance regression detection
-- Integration test automation
-
-## Workflow Configuration
-
-### **Concurrency Control**
-```yaml
-concurrency:
-  group: ${{ github.ref }}
-  cancel-in-progress: true
-```
-Prevents overlapping runs on the same branch, saving compute resources.
-
-### **Build Caching**
-```yaml
-- uses: actions/setup-node@v4
-  with:
-    cache: 'npm'
-```
-Speeds up CI runs by caching npm dependencies between builds.
-
-### **Secrets Management**
-GitHub Secrets are used for sensitive deployment credentials:
-- `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` for AWS deployments
-- `AZURE_WEBAPP_PUBLISH_PROFILE` for Azure deployments
-
-### **Environment Strategy**
-- **Staging** → Deploys from `develop` branch for testing
-- **Production** → Deploys from `main` branch for live users
-
-## Local Development Integration
-
-The CI pipeline mirrors local development commands:
-
-```bash
-# Lint (matches CI lint stage)
-npm run lint
-
-# Test (matches CI test stage)
-npm test -- --coverage
-
-# Build (matches CI build stage)
-npm run build
-```
-
-## Monitoring & Reporting
-
-- **Test Coverage:** Uploaded to Codecov for tracking
-- **Security Scans:** Integrated with GitHub Security tab
-- **Build Artifacts:** Stored for deployment and debugging
-- **PR Comments:** Automated test result reporting
-
-## Deployment Automation
-
-The pipeline supports deployment to multiple environments:
-
-1. **Staging Environment** (develop branch)
-   - Automatic deployment for testing
-   - Database migrations
-   - Environment variable injection
-
-2. **Production Environment** (main branch)
-   - Manual approval gates (can be configured)
-   - Blue/green deployment strategies
-   - Health checks and rollback capabilities
-
-## Getting Started with CI/CD
-
-1. **Fork/Clone** this repository
-2. **Configure Secrets** in GitHub Settings → Secrets and Variables → Actions
-3. **Create Pull Request** to trigger the CI pipeline
-4. **Monitor Results** in the Actions tab
-
-The CI/CD pipeline ensures that every change is thoroughly tested and deployed consistently, maintaining high code quality and reducing deployment risks.
-
----
-
 # 📘 RuralLite Learning Platform
 
-### Offline-First Educational Web App for Low-Bandwidth Rural Schools
+> **Offline-First Educational Web Application for Low-Bandwidth Rural Schools**
 
-Built with Next.js, **AWS/Azure Cloud Services**, and **Progressive Web App (PWA)** technologies.
+[![Next.js](https://img.shields.io/badge/Next.js-14-black)](https://nextjs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-20-green)](https://nodejs.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue)](https://www.postgresql.org/)
+[![Docker](https://img.shields.io/badge/Docker-Ready-blue)](https://www.docker.com/)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
 
-## 📌 Problem Statement
+## 📋 Table of Contents
 
-Rural and low-connectivity schools struggle to access quality educational resources due to poor internet infrastructure. Students often miss out on digital learning opportunities, multimedia content, and interactive assessments that urban schools enjoy. RuralLite addresses this gap by providing an offline-first learning platform that works seamlessly without internet, while syncing progress when connectivity is available.
+- [Overview](#-overview)
+- [Team Members](#-team-members)
+- [Key Features](#-key-features)
+- [Tech Stack](#-tech-stack)
+- [Project Structure](#-project-structure)
+- [Setup Guide](#-setup-guide)
+- [Environment Configuration](#-environment-configuration)
+- [Running the Application](#-running-the-application)
+- [Docker Deployment](#-docker-deployment)
+- [API Documentation](#-api-documentation)
+- [Testing](#-testing)
+- [Contributing](#-contributing)
+- [License](#-license)
 
 ---
 
 ## 🎯 Overview
 
-RuralLite is a lightweight, offline-first learning platform designed for rural or low-connectivity schools.
+**RuralLite** is a Progressive Web App (PWA) designed to bridge the digital education gap in rural and low-connectivity areas. The platform provides students with access to educational content, interactive quizzes, and learning resources that work seamlessly offline.
 
-The application allows students to access lessons, quizzes, and multimedia resources fully offline, using a PWA architecture with smart caching, local storage, and background synchronization. Cloud services (AWS or Azure) are used only for authentication, content publishing, and occasional data sync.
+### Problem Statement
 
----
+Rural schools struggle with:
+- ⚠️ Poor or intermittent internet connectivity
+- ⚠️ Limited access to quality educational resources
+- ⚠️ Lack of interactive digital learning tools
+- ⚠️ High costs of data consumption
 
-## 🎯 Key Features
+### Solution
 
-- Offline-first PWA (works without internet)
-- Local caching of lessons, quizzes, notes, and media
-- Lightweight content bundles optimized for weak networks
-- Background sync for student progress & new content
-- Teacher-friendly CMS (cloud-hosted)
-- Low-end device compatible
-- **Secure user authentication with bcrypt and JWT** ([See Authentication Documentation](./AUTHENTICATION_README.md))
-- **Secure file uploads with AWS S3 pre-signed URLs**
-
----
-
-## 🏗 System Architecture
-
-┌──────────────────────────┐
-│ Next.js PWA Frontend │
-│ (Service Worker, SWR) │
-│ │
-│ • IndexedDB (offline) │
-│ • LocalForage caching │
-│ • Background Sync │
-└──────────────┬───────────┘
-│ occasional sync
-┌──────────────▼─────────────┐
-│ Cloud Backend (API) │
-│ AWS Lambda / Azure Func. │
-│ │
-│ • Content APIs │
-│ • Sync endpoints │
-│ • Authentication │
-└──────────────┬─────────────┘
-│
-┌──────────────▼─────────────┐
-│ Content Storage + CDN │
-│ S3/Blob + CloudFront/CDN │
-│ │
-│ • Lesson bundles │
-│ • Multimedia assets │
-└─────────────────────────────┘
+RuralLite addresses these challenges by:
+- ✅ Offline-first architecture with smart caching
+- ✅ Lightweight content optimized for low bandwidth
+- ✅ Progressive Web App for cross-platform compatibility
+- ✅ Background synchronization when connectivity is available
+- ✅ Secure authentication and role-based access control
 
 ---
 
-## 🧰 Tech Stack
+## 👥 Team Members
 
-> NOTE: A Prisma + PostgreSQL schema is included in `prisma/` for normalized relational data modelling (User/Team/Project/Task). See `prisma/README.md` for migration and seed steps.
+### Team TriVengers
 
-- **Frontend**: Next.js (React Framework)
-- **Backend**: Next.js API Routes
-- **Database**: PostgreSQL with Prisma ORM
-- **Cloud Services**: AWS (S3 for file storage, Lambda, Cognito)
-- **File Upload**: AWS SDK v3 with pre-signed URLs
-- **Authentication**: bcrypt + JWT
-- **Caching**: Redis (ioredis)
+| Name | Role | Responsibilities |
+|------|------|------------------|
+| **Hari Krishna** | Team Leader & Backend Developer | Backend architecture, API development, database design, authentication, cloud services integration |
+| **Keerthana** | Frontend Developer | UI/UX implementation, React components, client-side logic, state management, responsive design |
+| **Lokeswara** | UI/UX Designer & QA Tester | User interface design, user experience optimization, testing strategies, quality assurance |
+
+---
+
+## ✨ Key Features
+
+### 🎓 For Students
+- **Offline Access**: Access lessons, notes, and quizzes without internet
+- **Interactive Quizzes**: Take assessments with instant feedback
+- **Progress Tracking**: Monitor learning progress and quiz scores
+- **Personal Notes**: Create and manage study notes
+- **Responsive Design**: Works seamlessly on mobile, tablet, and desktop
+
+### 👨‍🏫 For Teachers
+- **Content Management**: Create and manage lessons and quizzes
+- **Student Analytics**: Track student progress and performance
+- **File Uploads**: Share educational materials (PDFs, images, documents)
+- **Bulk Operations**: Manage multiple students efficiently
+
+### 🔒 Security & Authentication
+- **Secure Authentication**: JWT-based authentication with bcrypt password hashing
+- **Role-Based Access**: Different permissions for students, teachers, and admins
+- **Protected Routes**: Middleware-based route protection
+- **Secure File Uploads**: AWS S3 pre-signed URLs for file storage
+
+### 🚀 Performance & Scalability
+- **Redis Caching**: Fast data retrieval with intelligent caching
+- **Database Optimization**: PostgreSQL with Prisma ORM
+- **Background Sync**: Automatic data synchronization when online
+- **Progressive Web App**: Install on any device, works like native app
+
+### 🌐 Cloud Integration
+- **AWS Services**: S3 for storage, SES for emails, Lambda-ready architecture
+- **Azure Support**: Compatible with Azure services
+- **Docker Deployment**: Containerized for consistent deployments
+- **CI/CD Pipeline**: Automated testing and deployment with GitHub Actions
+
+---
+
+## 🛠 Tech Stack
+
+### Frontend
+- **Framework**: Next.js 14 (App Router)
+- **UI Library**: React 18
 - **Styling**: Tailwind CSS
-- **Deployment**: AWS / Vercel
+- **State Management**: React Context API + SWR
+- **Form Handling**: React Hook Form + Zod validation
+- **PWA**: Service Workers, IndexedDB, LocalForage
+
+### Backend
+- **Runtime**: Node.js 20
+- **Framework**: Next.js API Routes
+- **Database**: PostgreSQL 15
+- **ORM**: Prisma
+- **Cache**: Redis (ioredis)
+- **Authentication**: JWT + bcrypt
+
+### Cloud & DevOps
+- **Cloud Providers**: AWS, Azure
+- **Container**: Docker, Docker Compose
+- **CI/CD**: GitHub Actions
+- **File Storage**: AWS S3
+- **Email**: SendGrid / AWS SES
+- **Deployment**: AWS ECS, Azure App Service
+
+### Development Tools
+- **Package Manager**: npm
+- **Linting**: ESLint
+- **Testing**: Vitest, Jest
+- **Version Control**: Git, GitHub
 
 ---
 
@@ -301,1231 +138,255 @@ The application allows students to access lessons, quizzes, and multimedia resou
 S86-1225-TriVengers-Full-Stack-With-NextjsAnd-AWS-Azure-RuralLite/
 ├── rurallite/                      # Main Next.js application
 │   ├── app/                        # Next.js App Router
-│   │   ├── (auth)/                 # Authentication routes (login, register)
-│   │   ├── dashboard/              # Student/Teacher dashboard pages
-│   │   ├── lessons/                # Lesson listing and detail pages
-│   │   │   └── [id]/               # Dynamic route for individual lessons
-│   │   ├── quizzes/                # Quiz pages and quiz results
-│   │   │   └── [id]/               # Dynamic route for individual quizzes
-│   │   ├── notes/                  # Student notes section
 │   │   ├── api/                    # Backend API routes
 │   │   │   ├── auth/               # Authentication endpoints
 │   │   │   ├── lessons/            # Lesson CRUD operations
-│   │   │   ├── quizzes/            # Quiz endpoints
-│   │   │   ├── upload/             # File upload with pre-signed URLs
-│   │   │   ├── files/              # File metadata management
-│   │   │   └── sync/               # Background sync endpoints
-│   │   ├── globals.css             # Global styles
-│   │   ├── layout.js               # Root layout component
-│   │   └── page.js                 # Homepage (Hero section)
-│   ├── components/                 # Reusable React components
-│   │   ├── ui/                     # UI components (Button, Card, Navigation)
+│   │   │   ├── quizzes/            # Quiz management
+│   │   │   ├── notes/              # Student notes
+│   │   │   ├── users/              # User management
+│   │   │   ├── upload/             # File upload (S3)
+│   │   │   └── email/              # Email notifications
+│   │   ├── dashboard/              # Student/Teacher dashboard
+│   │   ├── lessons/                # Lesson pages
+│   │   ├── quizzes/                # Quiz pages
+│   │   ├── notes/                  # Notes management
+│   │   ├── login/                  # Authentication pages
+│   │   └── signup/
+│   ├── components/                 # React components
+│   │   ├── ui/                     # Reusable UI components
 │   │   ├── lessons/                # Lesson-specific components
-│   │   ├── offline/                # Offline indicator & sync status
-│   │   └── FileUploader.jsx        # File upload component with S3
-│   ├── lib/                        # Utility libraries and helpers
-│   │   ├── aws-s3.js               # AWS S3 pre-signed URL configuration
-│   │   ├── db/                     # IndexedDB configuration and operations
-│   │   ├── pwa/                    # Service Worker and sync manager
-│   │   └── utils/                  # Helper functions and utilities
+│   │   ├── layout/                 # Layout components
+│   │   └── offline/                # Offline indicators
+│   ├── lib/                        # Utility libraries
+│   │   ├── aws-s3.js               # AWS S3 configuration
+│   │   ├── mongodb.js              # MongoDB connection (deprecated)
+│   │   ├── redis.js                # Redis client
+│   │   ├── email.js                # Email service
+│   │   ├── jwtUtils.js             # JWT utilities
+│   │   ├── authMiddleware.js       # Authentication middleware
+│   │   ├── errorHandler.js         # Error handling
+│   │   ├── logger.js               # Logging utility
+│   │   └── db/                     # Database operations
+│   ├── context/                    # React Context providers
+│   │   ├── AuthContext.jsx         # Authentication context
+│   │   └── UIContext.jsx           # UI state context
+│   ├── hooks/                      # Custom React hooks
+│   │   ├── useAuth.js              # Authentication hook
+│   │   └── useUI.js                # UI state hook
+│   ├── prisma/                     # Prisma ORM
+│   │   ├── schema.prisma           # Database schema
+│   │   ├── migrations/             # Database migrations
+│   │   └── seed.js                 # Database seeding
 │   ├── public/                     # Static assets
-│   │   ├── icons/                  # App icons for PWA
-│   │   ├── manifest.json           # PWA manifest file
-│   │   └── sw.js                   # Service Worker script
-│   ├── styles/                     # Additional stylesheets
-│   ├── config/                     # Configuration files
-│   ├── package.json                # Dependencies and scripts
+│   │   ├── manifest.json           # PWA manifest
+│   │   ├── sw.js                   # Service Worker
+│   │   └── icons/                  # App icons
+│   ├── tests/                      # Test files
+│   ├── package.json                # Dependencies
 │   ├── next.config.mjs             # Next.js configuration
-│   ├── tailwind.config.js          # Tailwind CSS configuration
-│   ├── postcss.config.mjs          # PostCSS configuration
-│   └── eslint.config.mjs           # ESLint configuration
-├── .gitignore                      # Git ignore rules
-└── README.md                       # Project documentation (this file)
+│   ├── tailwind.config.ts          # Tailwind configuration
+│   └── .env.local                  # Environment variables (local)
+├── docker-compose.yml              # Docker Compose configuration
+├── Dockerfile                      # Docker build instructions
+└── README.md                       # This file
 ```
-
-### 📂 Folder Purpose Explanation
-
-| Folder/File     | Purpose                                                              |
-| --------------- | -------------------------------------------------------------------- |
-| **app/**        | Contains all pages and routing logic using Next.js App Router        |
-| **app/(auth)/** | Groups authentication-related pages (login, register)                |
-| **app/api/**    | Backend API endpoints for authentication, lessons, quizzes, and sync |
-| **components/** | Reusable UI components to maintain DRY principle                     |
-| **lib/**        | Business logic, database operations, PWA utilities                   |
-| **lib/db/**     | IndexedDB wrapper for offline data storage                           |
-| **lib/pwa/**    | Service Worker registration and background sync logic                |
-| **public/**     | Static assets served directly (icons, manifest, service worker)      |
-| **config/**     | Application configuration files (API keys, constants)                |
-
-### 🏗️ Naming Conventions
-
-- **Files**: kebab-case (e.g., `lesson-card.js`, `auth-provider.js`)
-- **Components**: PascalCase (e.g., `LessonCard`, `OfflineIndicator`)
-- **API Routes**: RESTful naming (e.g., `/api/lessons`, `/api/quizzes/[id]`)
-- **Folders**: lowercase with hyphens for multi-word names
 
 ---
 
-## 🚀 Quick Start (Dev)
-
-Run the app from the `rurallite` folder (not the repo root).
-
-```bash
-cd rurallite
-npm install
-npm run dev
-```
-
-Open http://localhost:3000 in your browser.
-
-If you see an error like "missing script: dev" or Exit Code 1 when running from the repo root, you're in the wrong folder. Switch to `rurallite/` first.
-
----
-
-## 🛠 Setup Instructions
+## 🚀 Setup Guide
 
 ### Prerequisites
 
-- Node.js (v18 or higher)
-- npm or yarn
-- PostgreSQL (local via Docker or a cloud instance)
+Before you begin, ensure you have the following installed:
 
-### Installation
+- **Node.js** (v20 or higher) - [Download](https://nodejs.org/)
+- **PostgreSQL** (v15 or higher) - [Download](https://www.postgresql.org/download/)
+- **Redis** (optional, for caching) - [Download](https://redis.io/download)
+- **Git** - [Download](https://git-scm.com/)
+- **Docker** (optional, for containerized setup) - [Download](https://www.docker.com/)
 
-1. **Clone the repository**
+### Quick Start (Local Development)
 
-   ```bash
-   git clone https://github.com/kalviumcommunity/S86-1225-TriVengers-Full-Stack-With-NextjsAnd-AWS-Azure-RuralLite.git
-   cd S86-1225-TriVengers-Full-Stack-With-NextjsAnd-AWS-Azure-RuralLite/rurallite
-   ```
-
-2. **Install dependencies**
-
-   ```bash
-   npm install
-   ```
-
-3. **Set up environment variables**
-   Create a `.env.local` file in the `rurallite/` directory:
-
-```env
-# Required
-DATABASE_URL=postgresql://postgres:password@localhost:5432/rurallite
-JWT_SECRET=replace_with_a_strong_secret
-
-# Optional: Email Providers
-SENDGRID_API_KEY=your_sendgrid_key
-SENDGRID_SENDER=no-reply@yourdomain.com
-AWS_ACCESS_KEY_ID=your_aws_key
-AWS_SECRET_ACCESS_KEY=your_aws_secret
-AWS_REGION=ap-south-1
-SES_EMAIL_SENDER=no-reply@yourdomain.com
-EMAIL_PROVIDER=sendgrid # or ses
-```
-
-4. **Run the development server**
-
-   ```bash
-   npm run dev
-   ```
-
-5. **Open your browser**
-   Navigate to [http://localhost:3000](http://localhost:3000)
-
-### Build for Production
+#### 1. Clone the Repository
 
 ```bash
+git clone https://github.com/your-username/S86-1225-TriVengers-Full-Stack-With-NextjsAnd-AWS-Azure-RuralLite.git
+cd S86-1225-TriVengers-Full-Stack-With-NextjsAnd-AWS-Azure-RuralLite
+```
+
+#### 2. Navigate to the Application Directory
+
+```bash
+cd rurallite
+```
+
+> **Important**: All commands must be run from the `rurallite/` directory, not the repository root.
+
+#### 3. Install Dependencies
+
+```bash
+npm install
+```
+
+#### 4. Set Up Environment Variables
+
+Create a `.env.local` file in the `rurallite/` directory:
+
+```bash
+# Copy the example environment file
+cp .env.example .env.local
+```
+
+Edit `.env.local` with your configuration (see [Environment Configuration](#-environment-configuration) below).
+
+#### 5. Set Up the Database
+
+```bash
+# Generate Prisma Client
+npx prisma generate
+
+# Run database migrations
+npx prisma migrate dev
+
+# Seed the database with sample data (optional)
+npx prisma db seed
+```
+
+#### 6. Start the Development Server
+
+```bash
+npm run dev
+```
+
+The application will be available at [http://localhost:3000](http://localhost:3000)
+
+#### 7. Create Your First User
+
+Navigate to [http://localhost:3000/signup](http://localhost:3000/signup) to create an account.
+
+---
+
+## 🔧 Environment Configuration
+
+Create a `.env.local` file in the `rurallite/` directory with the following variables:
+
+### Required Variables
+
+```env
+# Database
+DATABASE_URL="postgresql://postgres:password@localhost:5432/rurallite"
+
+# Authentication
+JWT_SECRET="your-super-secret-jwt-key-change-in-production"
+
+# Node Environment
+NODE_ENV="development"
+```
+
+### Optional Variables (for full functionality)
+
+```env
+# Redis Cache (optional, improves performance)
+REDIS_URL="redis://localhost:6379"
+
+# AWS S3 File Upload (optional, for file storage)
+AWS_ACCESS_KEY_ID="your-aws-access-key"
+AWS_SECRET_ACCESS_KEY="your-aws-secret-key"
+AWS_REGION="us-east-1"
+AWS_S3_BUCKET="your-bucket-name"
+
+# Email Service (optional, choose one)
+# SendGrid
+SENDGRID_API_KEY="your-sendgrid-api-key"
+SENDGRID_SENDER="no-reply@yourdomain.com"
+
+# OR AWS SES
+SES_EMAIL_SENDER="no-reply@yourdomain.com"
+EMAIL_PROVIDER="sendgrid"  # or "ses"
+
+# NextAuth (if using NextAuth.js)
+NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_SECRET="your-nextauth-secret"
+```
+
+### Generating Secure Secrets
+
+```bash
+# Generate a secure JWT secret
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+---
+
+## 🏃 Running the Application
+
+### Development Mode
+
+```bash
+cd rurallite
+npm run dev
+```
+
+Access the app at [http://localhost:3000](http://localhost:3000)
+
+### Production Build
+
+```bash
+cd rurallite
 npm run build
 npm start
 ```
 
----
-
-## 📸 Local Development Screenshot
-
-![RuralLite Homepage Running Locally](./screenshots/local-dev-screenshot.png)
-
-_Screenshot showing the RuralLite homepage running on localhost:3000_
-
----
-
-## 🧩 Troubleshooting
-
-- Missing `dev` script / Exit Code 1 when running `npm run dev` at repo root:
-  - Run commands inside `rurallite/` (`cd rurallite`), then `npm run dev`.
-- Database connection errors:
-  - Ensure PostgreSQL is running and `DATABASE_URL` is correct in `rurallite/.env.local`.
-- Unauthorized or login redirect loops:
-  - Ensure `JWT_SECRET` is set in `rurallite/.env.local`. Log in via `/login` to set the auth cookie.
-
----
-
-## 💡 Why This Structure?
-
-### Scalability
-
-- **Modular Design**: Components, API routes, and utilities are separated for easy maintenance
-- **Feature-Based Organization**: Related features (lessons, quizzes) are grouped together
-- **Reusable Components**: UI components can be shared across different pages
-- **API Separation**: Backend logic is isolated in `app/api/` for easy testing and scaling
-
-### Clarity
-
-- **Clear Separation of Concerns**: Frontend (components), Backend (API), and utilities (lib) are distinct
-- **Intuitive Navigation**: Folder names clearly indicate their purpose
-- **Grouped Routes**: Using `(auth)` groups keeps authentication logic together without affecting URLs
-
-### Team Collaboration
-
-- **Easy Onboarding**: New team members can quickly understand the project structure
-- **Parallel Development**: Multiple developers can work on different features without conflicts
-- **Consistent Patterns**: Naming conventions ensure uniformity across the codebase
-
-### Future Sprints
-
-- **PWA Support**: `lib/pwa/` folder is ready for service worker and offline capabilities
-- **Database Flexibility**: `lib/db/` can be extended for different database solutions
-- **Component Library**: `components/ui/` can evolve into a full design system
-- **API Versioning**: API routes can be versioned (`api/v1/`, `api/v2/`) as needed
-
----
-
----
-
-## 🗄️ Prisma ORM Setup
-
-### Why Prisma?
-
-Prisma is our chosen ORM for RuralLite because it provides:
-
-- **Type Safety**: Auto-generated TypeScript types prevent runtime errors
-- **PostgreSQL Support**: Robust relational database for complex queries and data integrity
-- **Developer Experience**: Intuitive API and excellent tooling
-- **Query Optimization**: Efficient queries crucial for low-bandwidth environments
-- **Migration Management**: Version control for database schema changes
-
-### Database Models
-
-Our schema is designed specifically for offline-first rural education:
-
-#### Core Models:
-
-- **User**: Students, Teachers, and Admins with role-based access
-- **Lesson**: Educational content with offline caching metadata (download size, media URLs)
-- **Quiz**: Assessments with time limits and configurable passing scores
-- **Question**: Individual quiz questions with multiple choice options
-- **QuizResult**: Student attempts with sync tracking for offline-to-online transition
-- **Answer**: Individual answer records linked to quiz results
-- **Progress**: Lesson completion tracking with percentage and sync status
-- **Note**: Student notes with tag support and offline sync capability
-
-#### Key Design Decisions:
-
-- **PostgreSQL**: Relational integrity, ACID compliance, and powerful querying
-- **Separate Tables**: Question and Answer are separate tables (not embedded) for flexibility
-- **Sync Tracking**: `syncedAt` fields track offline-to-cloud synchronization
-- **Cascade Deletes**: Maintains data integrity when users/lessons are removed
-- **Indexes**: Optimized queries on foreign keys and frequently searched fields
-- **Unique Constraints**: Prevents duplicate progress entries per user-lesson
-
-### Schema Snippet
-
-```prisma
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
-model Lesson {
-  id          Int       @id @default(autoincrement())
-  title       String
-  subject     String
-  grade       Int
-  difficulty  Difficulty @default(BEGINNER)
-  isOffline   Boolean   @default(true)
-  downloadSize Int?     // KB for offline planning
-
-  quizzes     Quiz[]
-  progress    Progress[]
-}
-
-model Progress {
-  id          Int       @id @default(autoincrement())
-  userId      Int
-  lessonId    Int
-  completed   Boolean   @default(false)
-  progress    Int       @default(0)
-  syncedAt    DateTime? // Tracks cloud sync
-
-  user        User      @relation(fields: [userId], references: [id])
-  lesson      Lesson    @relation(fields: [lessonId], references: [id])
-
-  @@unique([userId, lessonId])
-  @@index([userId])
-}
-```
-
-### Setup Steps
-
-1. **Install Prisma**
-
-   ```bash
-   cd rurallite
-   npm install prisma @prisma/client --save-dev
-   npx prisma init
-   ```
-
-2. **Configure Database**
-   - Update `DATABASE_URL` in `.env.local` with MongoDB connection string
-   - Use `.env.example` as reference
-
-3. **Generate Prisma Client**
-
-   ```bash
-   npx prisma generate
-   ```
-
-4. **Push Schema to Database**
-
-   ```bash
-   npx prisma db push
-   ```
-
-5. **Test Connection**
-   ```typescript
-   import { prisma } from "@/lib/prisma";
-   const users = await prisma.user.findMany();
-   ```
-
-### Client Initialization
-
-Created singleton Prisma client at `lib/prisma.js`:
-
-```typescript
-import { PrismaClient } from "@prisma/client";
-
-const globalForPrisma = global as unknown as { prisma: PrismaClient };
-
-export const prisma =
-  globalForPrisma.prisma ||
-  new PrismaClient({
-    log: ["query", "info", "warn", "error"],
-  });
-
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
-```
-
-**Why Singleton?** Prevents multiple Prisma instances during development hot-reloading, avoiding database connection exhaustion.
-
-### Testing & Verification
-
-Test queries available in `lib/db/test-connection.js`:
-
-- Connection verification
-- Sample lesson creation
-- Query examples for all models
-
-### How Prisma Improves Our Project
-
-**Type Safety**: Auto-completion for all database queries eliminates typos and wrong field names
-**Productivity**: No manual SQL writing—focus on features, not queries  
-**Data Integrity**: PostgreSQL's relational constraints ensure consistent data relationships  
-**Team Collaboration**: Shared schema file ensures everyone uses same data structure  
-**Reliability**: Built-in connection pooling and query optimization crucial for low-resource environments
-**Migrations**: Version-controlled database changes make team collaboration seamless
-
-### Environment Variables
-
-```env
-# PostgreSQL Connection (Local)
-DATABASE_URL="postgresql://postgres:password@localhost:5432/rurallite"
-
-# PostgreSQL Connection (Production - example)
-DATABASE_URL="postgresql://user:password@host.com:5432/rurallite?schema=public"
-```
-
-See `.env.example` for complete configuration.
-
----
-
-## 🔑 Authentication & Authorization
-
-RuralLite implements a secure authentication system using industry-standard practices:
-
-### Features
-
-- **Password Hashing**: bcrypt with 10 salt rounds ensures passwords are never stored in plain text
-- **JWT Tokens**: JSON Web Tokens for stateless session management
-- **Protected Routes**: Middleware-based authentication for API endpoints
-- **Role-Based Access**: Support for STUDENT, TEACHER, and ADMIN roles
-- **Token Expiry**: 24-hour token lifetime with automatic expiration
-
-### API Endpoints
-
-| Endpoint           | Method | Description                   | Auth Required |
-| ------------------ | ------ | ----------------------------- | ------------- |
-| `/api/auth/signup` | POST   | Register new user             | ❌            |
-| `/api/auth/login`  | POST   | Authenticate user & get token | ❌            |
-| `/api/auth/me`     | GET    | Get current user profile      | ✅            |
-| `/api/users`       | GET    | List all users (paginated)    | ✅            |
-
-### Quick Start
-
-**1. Signup:**
+### Running Tests
 
 ```bash
-curl -X POST http://localhost:3000/api/auth/signup \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Alice","email":"alice@example.com","password":"test123"}'
+# Run all tests
+npm test
+
+# Run tests with coverage
+npm test -- --coverage
+
+# Run specific test file
+npm test -- Button.test.jsx
 ```
 
-**2. Login:**
+### Linting and Formatting
 
 ```bash
-curl -X POST http://localhost:3000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"alice@example.com","password":"test123"}'
+# Run ESLint
+npm run lint
+
+# Fix linting issues automatically
+npm run lint -- --fix
 ```
-
-**3. Access Protected Route:**
-
-```bash
-curl -X GET http://localhost:3000/api/auth/me \
-  -H "Authorization: Bearer YOUR_TOKEN_HERE"
-```
-
-### Environment Variables
-
-Add to your `.env.local`:
-
-```env
-JWT_SECRET="your-super-secret-jwt-key-change-in-production"
-```
-
-**Generate a secure secret:**
-
-```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-```
-
-### Testing
-
-Use the provided test scripts:
-
-```powershell
-# Start server
-cd rurallite
-npm run dev
-
-# Run tests (in another terminal)
-.\test-auth-simple.ps1
-```
-
-### Security Highlights
-
-✅ Bcrypt hashing prevents password leaks  
-✅ JWT tokens enable stateless authentication  
-✅ Protected routes validate tokens  
-✅ Generic error messages prevent user enumeration  
-✅ Input validation prevents injection attacks
-
-### Complete Documentation
-
-For detailed authentication implementation, API examples, security considerations, and best practices, see:
-
-📚 **[Complete Authentication Documentation](./AUTHENTICATION_README.md)**
 
 ---
 
-## 📤 File Upload with AWS S3
+## 🐳 Docker Deployment
 
-RuralLite implements secure file uploads using **AWS S3 pre-signed URLs**, allowing students and teachers to upload documents, images, and learning materials directly to cloud storage without exposing credentials.
+### Using Docker Compose (Recommended)
 
-### Key Features
+Docker Compose sets up the entire stack (Next.js, PostgreSQL, Redis) with a single command.
 
-- **Pre-signed URLs**: Temporary upload URLs (60s expiry) for direct S3 uploads
-- **File Validation**: Type and size checks (10MB max)
-- **Secure Storage**: AWS credentials protected, never exposed to client
-- **Metadata Tracking**: File information stored in PostgreSQL
-- **Direct Upload**: Clients upload to S3 directly, bypassing backend bottlenecks
-
-### Supported File Types
-
-Images (`.jpg`, `.png`, `.gif`, `.webp`), Documents (`.pdf`, `.doc`, `.docx`, `.txt`)
-
-### Upload Flow
-
-```
-Client → Backend (generates URL) → S3 (direct upload) → Database (stores metadata)
-```
-
-### API Endpoints
-
-- `POST /api/upload` - Generate pre-signed URL
-- `POST /api/files` - Store file metadata
-- `GET /api/files` - Retrieve uploaded files
-- `DELETE /api/files` - Delete file from S3 and database
-
-### Quick Test
-
-```bash
-# Test upload flow
-.\test-file-upload.ps1
-```
-
-For complete file upload documentation, architecture details, security measures, and setup guide, see:
-
-📚 **[Complete File Upload Documentation](./FILE_UPLOAD_README.md)**  
-📚 **[Quick Setup Guide](./SETUP_GUIDE.md)**
-
----
-
-## 🔒 HTTPS Enforcement & Secure Headers
-
-RuralLite implements comprehensive security headers to protect against common web vulnerabilities. These headers act as the first line of defense against attacks like man-in-the-middle (MITM), cross-site scripting (XSS), clickjacking, and unauthorized API access.
-
-### Security Headers Overview
-
-| Header | Purpose | Attack Prevention |
-|--------|---------|------------------|
-| **HSTS** (HTTP Strict Transport Security) | Forces browsers to always use HTTPS | Man-in-the-middle (MITM) attacks, protocol downgrade |
-| **CSP** (Content Security Policy) | Restricts allowed sources for scripts, styles, and content | Cross-Site Scripting (XSS), data exfiltration |
-| **CORS** (Cross-Origin Resource Sharing) | Controls which domains can access your API | Unauthorized API access from untrusted domains |
-| **X-Frame-Options** | Prevents page from being embedded in iframes | Clickjacking attacks |
-| **X-Content-Type-Options** | Prevents MIME type sniffing | Drive-by downloads, content type attacks |
-| **Referrer-Policy** | Controls referrer information sent with requests | Information leakage |
-
-### Implementation Details
-
-#### 1. HSTS (HTTP Strict Transport Security)
-
-Configured in [rurallite/next.config.mjs](rurallite/next.config.mjs):
-
-```javascript
-{
-  key: 'Strict-Transport-Security',
-  value: 'max-age=63072000; includeSubDomains; preload'
-}
-```
-
-**Configuration breakdown:**
-- `max-age=63072000` → 2 years validity (730 days)
-- `includeSubDomains` → Applies to all subdomains
-- `preload` → Eligible for HSTS preload list in browsers
-
-**What it does:** Once a user visits your site over HTTPS, their browser will automatically use HTTPS for all future requests for 2 years, even if they type `http://` in the address bar.
-
-#### 2. Content Security Policy (CSP)
-
-Configured in [rurallite/next.config.mjs](rurallite/next.config.mjs):
-
-```javascript
-{
-  key: 'Content-Security-Policy',
-  value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://apis.google.com; ..."
-}
-```
-
-**Key directives:**
-- `default-src 'self'` → Only load resources from same origin by default
-- `script-src` → Defines allowed JavaScript sources (self, Google APIs)
-- `style-src` → Defines allowed CSS sources (self, inline styles, Google Fonts)
-- `img-src 'self' data: https: blob:` → Allow images from self, data URIs, HTTPS, and blobs
-- `connect-src` → Restricts AJAX, WebSocket, and fetch() destinations
-- `frame-ancestors 'none'` → Prevents embedding in iframes (alternative to X-Frame-Options)
-- `upgrade-insecure-requests` → Automatically upgrades HTTP requests to HTTPS
-
-**⚠️ Important:** Customize CSP based on your actual third-party integrations (analytics, fonts, CDNs). A strict CSP can break functionality if not configured properly.
-
-#### 3. CORS (Cross-Origin Resource Sharing)
-
-Configured in [rurallite/lib/corsConfig.js](rurallite/lib/corsConfig.js) and applied via [rurallite/middleware.js](rurallite/middleware.js):
-
-```javascript
-// Allowed origins (customize for your deployment)
-const ALLOWED_ORIGINS = [
-  'http://localhost:3000',
-  'https://rurallite.vercel.app',
-  'https://your-production-domain.com'
-];
-```
-
-**CORS Headers:**
-- `Access-Control-Allow-Origin` → Specifies exact allowed origin (never use `*` in production)
-- `Access-Control-Allow-Methods` → `GET, POST, PUT, PATCH, DELETE, OPTIONS`
-- `Access-Control-Allow-Headers` → `Content-Type, Authorization, X-Requested-With`
-- `Access-Control-Allow-Credentials` → `true` (allows cookies/auth headers)
-- `Access-Control-Max-Age` → `86400` (24 hours cache for preflight requests)
-
-**How it works:**
-1. Browser sends preflight OPTIONS request with `Origin` header
-2. Middleware checks if origin is in allowed list
-3. If allowed, responds with CORS headers; if not, request is blocked
-4. Actual request proceeds only if preflight succeeds
-
-**Development vs Production:**
-- **Development:** All localhost origins are automatically allowed
-- **Production:** Only explicitly listed domains in `ALLOWED_ORIGINS` are allowed
-
-#### 4. Additional Security Headers
-
-**X-Frame-Options:**
-```javascript
-{ key: 'X-Frame-Options', value: 'DENY' }
-```
-Prevents the page from being embedded in any iframe, protecting against clickjacking.
-
-**X-Content-Type-Options:**
-```javascript
-{ key: 'X-Content-Type-Options', value: 'nosniff' }
-```
-Forces browsers to respect declared content types, preventing MIME-type sniffing attacks.
-
-**Referrer-Policy:**
-```javascript
-{ key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' }
-```
-Sends full URL for same-origin requests, only origin for cross-origin requests.
-
-**Permissions-Policy:**
-```javascript
-{ key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' }
-```
-Disables browser features like camera, microphone, and geolocation for added privacy.
-
-### Testing & Verification
-
-#### Local Testing (Chrome DevTools)
-
-1. Open your app in Chrome
-2. Open DevTools → **Network** tab
-3. Refresh the page and select the main document request
-4. Click **Headers** → **Response Headers**
-5. Verify presence of:
-   - `Strict-Transport-Security`
-   - `Content-Security-Policy`
-   - `X-Frame-Options`
-   - `X-Content-Type-Options`
-   - `Access-Control-Allow-Origin` (on API requests)
-
-#### Online Security Scanners
-
-Test your deployed application with these tools:
-
-**[Security Headers](https://securityheaders.com)**
-```
-https://securityheaders.com/?q=https://your-domain.com
-```
-Provides a grade (A+ to F) and detailed analysis of all security headers.
-
-**[Mozilla Observatory](https://observatory.mozilla.org)**
-```
-https://observatory.mozilla.org/analyze/your-domain.com
-```
-Comprehensive security scan including headers, TLS configuration, and best practices.
-
-**[SSL Labs](https://www.ssllabs.com/ssltest/)**
-```
-https://www.ssllabs.com/ssltest/analyze.html?d=your-domain.com
-```
-Tests HTTPS/TLS configuration and certificate validity.
-
-#### PowerShell Testing Script
-
-Test headers locally:
-
-```powershell
-# Test security headers
-$response = Invoke-WebRequest -Uri "http://localhost:3000" -UseBasicParsing
-$response.Headers | Format-Table
-
-# Test API CORS
-$apiResponse = Invoke-WebRequest -Uri "http://localhost:3000/api/testdb" `
-  -Method GET `
-  -Headers @{"Origin"="http://localhost:3000"} `
-  -UseBasicParsing
-
-Write-Host "CORS Headers:" -ForegroundColor Green
-$apiResponse.Headers.'Access-Control-Allow-Origin'
-$apiResponse.Headers.'Access-Control-Allow-Methods'
-```
-
-### Configuration Checklist
-
-- [x] **HSTS** configured with 2-year max-age and preload
-- [x] **CSP** configured with trusted sources (customize for your integrations)
-- [x] **CORS** configured with explicit allowed origins (no wildcards)
-- [x] **X-Frame-Options** set to DENY
-- [x] **X-Content-Type-Options** set to nosniff
-- [x] **Referrer-Policy** configured for privacy
-- [x] **Middleware** applies CORS to all API routes
-- [x] **Preflight OPTIONS** requests handled correctly
-- [ ] **Production origins** updated in `corsConfig.js`
-- [ ] **CSP domains** customized for your CDNs/analytics
-- [ ] **Security scan** performed on production deployment
-
----
-
-## Cloud Database Configuration (RDS / Azure SQL)
-
-- Provisioned a managed PostgreSQL instance (AWS RDS/Azure SQL) for the app.
-- Configured secure network access (IP allowlisting for development).
-- Connected the Next.js app to the cloud database using the DATABASE_URL in `.env.local`.
-- Verified the connection using the `/api/testdb` endpoint (returns table counts if successful).
-- Enabled automated backups on the cloud database.
-- Documented the process and best practices for production (private endpoints, backups, scaling).
-
-See the `/rurallite/app/api/testdb/route.js` and `/rurallite/lib/prisma.js` for implementation details.
-
----
-
-## ✅ Secure File Uploads with AWS S3
-
-This project implements secure, production-ready file uploads using AWS S3. All uploads use pre-signed URLs, strict file type and size validation (client and server), private ACL, and server-side encryption. Credentials are never exposed, and all configuration is managed via environment variables. The upload flow is robust, user-friendly, and follows industry best practices for cloud object storage.
-
-
-### Customization for Deployment
-
-Before deploying to production:
-
-1. **Update allowed origins** in [rurallite/lib/corsConfig.js](rurallite/lib/corsConfig.js):
-   ```javascript
-   const ALLOWED_ORIGINS = [
-     'https://your-actual-domain.com',
-     'https://www.your-actual-domain.com',
-     'https://rurallite.vercel.app'  // Update with your Vercel domain
-   ];
-   ```
-
-2. **Customize CSP** in [rurallite/next.config.mjs](rurallite/next.config.mjs) based on your integrations:
-   - Add your CDN domains to `img-src`
-   - Add analytics domains (Google Analytics, Mixpanel, etc.) to `script-src` and `connect-src`
-   - Add font CDNs to `font-src`
-   - Remove `'unsafe-inline'` and `'unsafe-eval'` if possible for stricter security
-
-3. **Test thoroughly** after CSP changes:
-   - Check browser console for CSP violations
-   - Test all features (login, file upload, API calls)
-   - Verify third-party integrations work
-
-### Security Best Practices
-
-✅ **Never use `Access-Control-Allow-Origin: *` in production** → Always specify exact domains  
-✅ **Test CSP changes thoroughly** → A strict CSP can break functionality  
-✅ **Use HTTPS in production** → HSTS only works over HTTPS  
-✅ **Monitor CSP violations** → Use CSP reporting to catch issues  
-✅ **Keep headers updated** → Security best practices evolve  
-✅ **Review third-party scripts** → Only load from trusted sources  
-✅ **Document all CORS origins** → Keep track of why each domain is allowed
-
-### Impact on Third-Party Integrations
-
-**CSP may affect:**
-- ❌ Inline scripts and styles (use `nonce` or `hash` instead of `'unsafe-inline'`)
-- ❌ External analytics (Google Analytics, Mixpanel) - must be whitelisted
-- ❌ External fonts (Google Fonts, Font Awesome) - must be whitelisted
-- ❌ CDN resources - must be whitelisted
-
-**CORS may affect:**
-- ❌ API calls from external domains
-- ❌ Mobile app API access - whitelist app domains
-- ❌ Third-party webhooks - may need separate endpoint without CORS
-
-### Troubleshooting
-
-**Issue: CSP blocking scripts**
-- Check browser console for CSP violation errors
-- Add the blocked domain to appropriate CSP directive
-- Test with relaxed CSP first, then tighten gradually
-
-**Issue: CORS errors in API calls**
-- Verify origin is in `ALLOWED_ORIGINS`
-- Check if preflight OPTIONS request is being handled
-- Ensure `Access-Control-Allow-Credentials: true` if sending cookies
-
-**Issue: Resources not loading over HTTPS**
-- Check for mixed content warnings in console
-- Use `upgrade-insecure-requests` in CSP
-- Ensure all resources use HTTPS URLs
-
-### Screenshot Evidence
-
-After testing, document your security implementation:
-
-1. **Browser DevTools Headers Screenshot**
-   - Save to `screenshots/security-headers.png`
-   - Show Response Headers with all security headers visible
-
-2. **Security Scan Results**
-   - Run scan on [securityheaders.com](https://securityheaders.com)
-   - Save result to `screenshots/security-scan.png`
-   - Target: A or A+ grade
-
-3. **CORS Test Screenshot**
-   - Show successful API call with CORS headers
-   - Save to `screenshots/cors-headers.png`
-
-### Reflection
-
-**Why HTTPS enforcement matters:**
-- Protects user credentials and sensitive data in transit
-- Prevents session hijacking and man-in-the-middle attacks
-- Required for modern browser features (Service Workers, PWA)
-- Builds user trust (green padlock in address bar)
-
-**How security headers improve our app:**
-- **Multiple layers of defense** → Security headers work together
-- **Minimal performance impact** → Headers are lightweight
-- **Proactive protection** → Prevents attacks before they happen
-- **Standards compliance** → Follows OWASP recommendations
-
-**Balancing security and flexibility:**
-- Strict CSP requires careful configuration for third-party services
-- CORS restrictions may complicate API integrations
-- Some legacy browsers may not support all headers
-- Must document all exceptions and their reasons
-
-**For rural/offline context:**
-- Service Worker requires HTTPS to function
-- Offline-first PWA architecture depends on secure contexts
-- Local caching is more secure with CSP protecting cached content
-- Background sync requires secure connection for data uploads
-
-### Complete Documentation
-
-For detailed implementation guide, testing procedures, troubleshooting, and production deployment checklist, see:
-
-📚 **[Complete Security Headers Documentation](./SECURITY_HEADERS.md)**
-
----
-
-## 🔀 Git Workflow & Collaboration
-
-### Branch Naming Conventions
-
-Our team follows a consistent branching strategy for clarity and traceability:
-
-| Branch Type       | Pattern                  | Example                     |
-| ----------------- | ------------------------ | --------------------------- |
-| **Feature**       | `feature/<feature-name>` | `feature/login-auth`        |
-| **Bug Fix**       | `fix/<bug-name>`         | `fix/navbar-alignment`      |
-| **Chore**         | `chore/<task-name>`      | `chore/update-dependencies` |
-| **Documentation** | `docs/<update-name>`     | `docs/update-readme`        |
-
-### Pull Request Template
-
-We use a standardized PR template located at `.github/pull_request_template.md` that includes:
-
-- Summary of changes
-- List of key updates
-- Screenshots/evidence
-- Type of change (feature/fix/chore/docs)
-- Comprehensive checklist
-- Related issue links
-
-### Code Review Checklist
-
-Every PR must pass this checklist before merging:
-
-- [ ] **Code Quality**: Follows naming conventions and project structure
-- [ ] **Functionality**: Verified locally and tested
-- [ ] **Build Status**: Code builds successfully without errors
-- [ ] **Linting**: ESLint + Prettier checks pass
-- [ ] **Console**: No console errors or warnings
-- [ ] **Documentation**: Comments and docs are meaningful
-- [ ] **Security**: No sensitive data exposed (.env files excluded)
-- [ ] **Tests**: All tests pass (when applicable)
-- [ ] **Review**: Reviewed by at least one teammate
-- [ ] **Issue Link**: Linked to corresponding issue
-
-### Branch Protection Rules
-
-Our `main` branch is protected with:
-
-- ✅ Require pull request reviews before merging
-- ✅ Require status checks to pass (lint/test workflows)
-- ✅ Disallow direct pushes to main
-- ✅ Require branches to be up to date before merging
-
-### Why This Workflow?
-
-**Code Quality**: Automated checks catch issues before they reach production  
-**Collaboration**: Clear templates and checklists improve communication  
-**Velocity**: Parallel development without merge conflicts  
-**Trust**: Every change is reviewed, tested, and documented  
-**Traceability**: Branch naming and PR links create clear history
-
----
-
-## �🔄 Offline Sync Logic
-
-### When offline:
-
-- Lessons load from indexedDB
-- Quiz results stored locally
-- Notes saved to local database
-
-### When reconnected:
-
-- Syncs quiz results → cloud
-- Downloads new lessons → cache
-- Updates service worker assets
-
----
-
-## 🤝 Contributing
-
-PRs are welcome!
-Please open an issue to discuss major changes before submitting a pull request.
-
----
-
-## 📜 License
-
-MIT License © 2024–2025 RuralLite Project
-
----
-
-## 👥 Team TriVengers
-
-Built with ❤️ for improving rural education accessibility
-
----
-
-## 📝 Day 1 - Project Initialization Checklist
-
-- [x] Set up Next.js project with Tailwind CSS
-- [x] Create folder structure following best practices
-- [x] Add .gitignore for node_modules, .env, .next
-- [x] Design and implement homepage hero section
-- [x] Document project structure in README
-- [x] Add setup instructions and naming conventions
-- [x] Run app locally and capture screenshot
-- [x] Write reflection on structure and scalability
-
----
-
-## 📝 Day 2 - Team Workflow & Git Setup
-
-- [x] Defined branch naming conventions (feature/fix/chore/docs)
-- [x] Created PR template in `.github/pull_request_template.md`
-- [x] Documented code review checklist
-- [x] Configured branch protection rules on main
-- [x] Added Git workflow section to README
-- [x] Enabled TypeScript strict mode in `tsconfig.json`
-- [x] Configured ESLint + Prettier for consistent formatting
-- [x] Set up Husky pre-commit hook with `lint-staged`
-- [x] Created `.env.example` for environment variable management
-- [x] Updated `.gitignore` to exclude sensitive `.env` files
-
----
-
-## 📝 Day 3 - Prisma ORM & Database Setup
-
-- [x] Installed Prisma and initialized project
-- [x] Designed MongoDB schema for RuralLite (User, Lesson, Quiz, Progress, Note models)
-- [x] Added offline-first features (syncedAt, downloadSize, isOffline fields)
-- [x] Generated Prisma Client with TypeScript types
-- [x] Created singleton Prisma client in `lib/prisma.js`
-- [x] Added test connection file with sample queries
-- [x] Updated `.env.example` with DATABASE_URL
-- [x] Documented Prisma setup, schema design, and benefits in README
-
----
-
-## 📝 Day 3 - Prisma & PostgreSQL
-
-- Added a normalized Prisma schema (`prisma/schema.prisma`) with models: User, Team, Project, Task, Comment, Tag, and related join tables.
-- Created migration files and an initial SQL migration, and added a seed script (`prisma/seed.js`) that inserts example users, teams, projects, tasks, tags, and comments.
-- Implemented a Prisma client helper (`rurallite/prismaClient.js`) and a simple API route (`/api/testdb`) to verify DB connectivity and seeded counts.
-- Updated `rurallite/package.json` with Prisma scripts (`prisma:generate`, `prisma:migrate`, `prisma:studio`, `prisma:seed`) and added `.env` examples for local development.
-
----
-
-## 📝 Day 4 — Transactions & Query Optimization
-
-- [x] Implement transaction demo and rollback verification (`rurallite/scripts/transaction_demo.js`, API at `app/api/transactions/demo/route.js`)
-- [x] Add `Product`, `Order`, and `OrderItem` models with indexes in `rurallite/prisma/schema.prisma`
-- [x] Seeded sample products in `rurallite/prisma/seed.js`
-- [x] Added benchmark script (`rurallite/scripts/bench_index_flip.js`) and captured real `EXPLAIN ANALYZE` outputs (`rurallite/benchmarks/real_before.txt`, `rurallite/benchmarks/real_after.txt`)
-- [x] Documented workflow and findings in `rurallite/TRANSACTIONS_AND_INDEXES.md`
-
-## 📝 Day 5 — Global API Response Handler
-
-- [x] **Utility:** Added a unified response handler `rurallite/lib/responseHandler.js` exposing `sendSuccess` / `sendError` and helpers `buildSuccess` / `buildError` for envelope construction and typing.
-- [x] **Error codes:** Added `rurallite/lib/errorCodes.js` to standardize error codes across endpoints.
-- [x] **Route integration:** Initially updated `app/api/users/route.js` and `app/api/quizzes/route.js`; then applied the handler across additional routes (`users/[id]`, `notes`, `lessons`, `progress`, `quiz-results`, `testdb`, `transactions/demo`) to ensure consistent envelopes.
-- [x] **Documentation:** Updated `rurallite/README.md` with the unified response envelope shape, example success/error JSON, and code usage snippets.
-- [x] **Tests & types (optional):** Added TypeScript types and `tests/responseHandler.test.ts` (Vitest) validating envelope shapes; tests pass locally.
-- [x] **Quality checks:** Installed deps, ran ESLint and TypeScript (`npx tsc`), and addressed minor issues introduced during the change.
-
-**Why this helps:** Consistent API responses reduce frontend complexity, improve observability (error codes + timestamps), and make the API easier to debug and maintain.
-
-## 📝 Day 6 — Input Validation with Zod
-
-Implemented input validation for POST and PUT endpoints using Zod. Added a shared schema at `rurallite/lib/schemas/userSchema.js` and applied it to the users routes to ensure consistent server-side validation. Validation failures now return structured errors (field + message) with `VALIDATION_ERROR` and HTTP 400, making errors easier to consume by clients. This enables schema reuse between client and server and improves overall API reliability.
-
-Code snippet — schema ( `rurallite/lib/schemas/userSchema.js` ):
-
-```js
-import { z } from "zod";
-
-export const userSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters long"),
-  email: z.string().email("Invalid email address"),
-  role: z.string().optional(),
-});
-
-export const userUpdateSchema = userSchema.partial();
-```
-
-### Request examples:
-
-**Passing example:**
-
-```bash
-curl -X POST http://localhost:3000/api/users \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Alice","email":"alice@example.com","role":"STUDENT"}'
-```
-
-**Failing example (invalid data):**
-
-```bash
-curl -X POST http://localhost:3000/api/users \
-  -H "Content-Type: application/json" \
-  -d '{"name":"A","email":"bademail"}'
-```
-
-**Expected failing response (HTTP 400):**
-
-```json
-{
-  "success": false,
-  "message": "Validation Error",
-  "error": {
-    "code": "E001",
-    "details": [
-      { "field": "name", "message": "Name must be at least 2 characters long" },
-      { "field": "email", "message": "Invalid email address" }
-    ]
-  },
-  "timestamp": "2025-12-17T...Z"
-}
-```
-
-## 📝 Day 7 — Error Handling Middleware
-
-- [x] Centralized error handling implemented in `rurallite/lib/errorHandler.js` (exports `handleError`).
-- [x] Structured JSON logging in `rurallite/lib/logger.js`.
-- [x] Unit tests:
-  - `rurallite/tests/errorHandler.test.ts`
-  - `rurallite/tests/logger.test.ts`
-- [x] Run tests (from repo root):
-  - `npm test --prefix rurallite` (or from `rurallite/`: `npm test`)
-- Note for Windows: run tests in Command Prompt (cmd) or use `npm.cmd` if PowerShell blocks scripts.
-
-## 📝 Day 8 - Redis Caching Layer
-
-- Redis client: `ioredis` is configured in `rurallite/lib/redis.js` using `REDIS_URL` (defaults to `redis://localhost:6379`) with a single shared connection and health logs for ready/error/reconnect events.
-- Cached endpoint: GET `/api/users` now uses a cache-aside strategy in `rurallite/app/api/users/route.js` with key pattern `users:list:p{page}:l{limit}` and a 60 second TTL. Cache reads/writes are wrapped so the route falls back to Prisma when Redis is unavailable.
-- Invalidation: POST `/api/users` clears keys matching `users:list:*` after creating a user to prevent stale pagination results. Extend the same pattern to future update/delete endpoints.
-- Behavior snapshot (excerpt):
-
-```js
-// rurallite/app/api/users/route.js
-const cacheKey = `users:list:p${page}:l${limit}`;
-const cached = await redis.get(cacheKey);
-// ...on miss: fetch from Prisma then seed cache for 60s
-await redis.set(cacheKey, JSON.stringify({ users, meta }), "EX", 60);
-```
-
-- How to observe:
-  - Ensure Redis is running (`docker-compose up redis` or your managed endpoint).
-  - First call: `curl -X GET http://localhost:3000/api/users` logs a cache miss and hits the database.
-  - Second call within 60s: logs `users:list cache hit` and returns faster (compare timestamps or use a local timer to see latency drop versus the cold call).
-  - Inspect keys and TTLs: `docker-compose exec redis redis-cli keys "users:list:*"` and `ttl <key>`.
-- Stale data considerations: TTL and post-create invalidation limit staleness to roughly 60 seconds. Avoid caching endpoints that change every request or need real-time freshness; for read-heavy lists (users, lessons, quizzes) the current policy favors latency and lower DB load.
-
-## 📝 Day 9 - Email Service Integration (SendGrid / AWS SES) ✅
-
-Five key deliverables completed in this assignment:
-
-- [x] Implemented a transactional email API endpoint at `/api/email` (`rurallite/app/api/email/route.js`) that accepts POST requests, validates input, and supports sending custom HTML or templated emails.
-- [x] Added a provider-agnostic email service at `rurallite/lib/email.js` supporting **SendGrid** and **AWS SES**, with auto-detection from env vars (`SENDGRID_API_KEY` or `AWS_*`) and optional `EMAIL_PROVIDER` override.
-- [x] Created reusable HTML templates in `rurallite/lib/emailTemplates.js` (e.g., `welcomeTemplate`, `passwordResetTemplate`) and wired a `type: "welcome"` option in the API for easy use.
-- [x] Updated documentation and README with configuration details, example curl commands, sandbox vs production notes, and operational considerations (rate limits, bounce handling, SPF/DKIM).
-- [x] Added dependencies (`@sendgrid/mail`, `@aws-sdk/client-ses`), handled install issues, and provided test instructions plus console log evidence (SendGrid headers or SES MessageId) for verification.
-
-## 📝 Day 10 - Form handling and validation 
-- [x] Implemented global state management using the React Context API and custom hooks in a Next.js application. 
-- [x] Created AuthContext for authentication state and UIContext for UI state such as theme toggling and sidebar visibility, both provided through the root layout to avoid prop drilling. 
-- [x] Built reusable custom hooks (useAuth and useUI) to encapsulate context logic and keep components clean and declarative.
-- [x] Upgraded data fetching by implementing SWR, replacing basic fetch calls with caching, revalidation, and optimistic UI updates. 
-- [x] Achieved instant page loads, immediate UI updates for create and delete actions, and reduced network requests by approximately 60% with smart auto-refresh intervals and a development Cache Inspector.
-- [x] Implemented reusable form handling and validation using React Hook Form and Zod, including a shared FormInput component, clear schema-based error messages, and improved accessibility with proper labels, inline feedback, and aria-invalid attributes.
-
-## 📝 Day 11 - Feedback UI (Toasts, Modals & Loaders)
-
-To improve user experience and trust, interactive feedback UI elements were added across the application.
-
-### Implemented Features
-- Toast notifications for instant success and error feedback
-- Confirmation modal for destructive actions
-- Loaders for async operations like form submission and deletion
-
-### Trigger Points
-- Login and signup form submissions
-- API success and failure states
-- Delete confirmation actions
-
-## 🐳 Docker & Docker Compose Setup
-
-### Overview
-
-This section covers containerizing the RuralLite application stack for consistent local development and deployment. The Docker setup includes:
-
-- **Next.js Application** (Node.js 20-Alpine)
-- **PostgreSQL Database** (v15-Alpine) for data persistence
-- **Redis Cache** (v7-Alpine) for session management and caching
-
-Using Docker and Docker Compose ensures that every team member runs the exact same environment, eliminating the classic "it works on my machine" problem.
-
-### Project Files
-
-#### 1. **Dockerfile** (Next.js Application)
-
-```dockerfile
-# Use official Node.js image
-FROM node:20-alpine
-
-# Set working directory
-WORKDIR /app
-
-# Copy package files and install dependencies
-COPY package*.json ./
-RUN npm install
-
-# Copy rurallite subdirectory contents
-COPY rurallite ./rurallite
-
-# Set working directory to rurallite app
-WORKDIR /app/rurallite
-
-# Install app dependencies
-RUN npm install
-
-# Build the Next.js app
-RUN npm run build
-
-# Expose the app port
-EXPOSE 3000
-
-# Start the app
-CMD ["npm", "run", "start"]
-```
-
-**Why Alpine?** Alpine Linux is lightweight (~5MB) compared to standard Node images, resulting in faster builds and smaller image sizes.
-
-#### 2. **docker-compose.yml** (Service Orchestration)
-
-The `docker-compose.yml` file orchestrates three services:
-
-**App Service (Next.js)**
-
-- Builds from the Dockerfile
-- Exposes port 3000
-- Environment variables for database and Redis connections
-- Depends on PostgreSQL and Redis with health checks
-- Auto-restart policy for reliability
-
-**Database Service (PostgreSQL)**
-
-- Uses Alpine image for efficiency
-- Persistent storage with named volume `db_data`
-- Exposed on port 5432
-- Health check to ensure readiness before app starts
-- Credentials: `postgres` / `password` (change in production!)
-
-**Redis Service (Redis)**
-
-- Cache layer for sessions and temporary data
-- Exposed on port 6379
-- Health check via `redis-cli ping`
-- Auto-restart enabled
-
-**Network & Volumes**
-
-- **localnet**: Custom bridge network for inter-service communication
-- **db_data**: Named volume for PostgreSQL data persistence
-
-### Quick Start
-
-#### Prerequisites
-
-- **Docker**: [Download & Install](https://www.docker.com/products/docker-desktop)
-- **Docker Compose**: Included with Docker Desktop
-
-#### Starting the Stack
+#### 1. Build and Start All Services
 
 ```bash
 # From the project root directory
 docker-compose up --build
 ```
 
-This command:
+This starts:
+- **Next.js App** on [http://localhost:3000](http://localhost:3000)
+- **PostgreSQL** on port `5432`
+- **Redis** on port `6379`
 
-1. Builds the Next.js app image
-2. Pulls PostgreSQL and Redis images
-3. Creates the network and volumes
-4. Starts all three services
-
-**Expected Output:**
-
-```
-Creating network "localnet" with driver "bridge"
-Creating volume "db_data" with default driver
-Building app
-[...]
-trivengers_nextjs_app is running on port 3000
-trivengers_postgres_db is running on port 5432
-trivengers_redis_cache is running on port 6379
-```
-
-#### Verifying All Services
+#### 2. Run in Detached Mode
 
 ```bash
-# Check running containers
-docker ps
-
-# Expected output:
-# CONTAINER ID   IMAGE        PORTS                    NAMES
-# abc123...      node:20...   0.0.0.0:3000->3000/tcp   trivengers_nextjs_app
-# def456...      postgres:15  0.0.0.0:5432->5432/tcp   trivengers_postgres_db
-# ghi789...      redis:7      0.0.0.0:6379->6379/tcp   trivengers_redis_cache
+docker-compose up -d
 ```
 
-#### Access Services
-
-- **Next.js App**: http://localhost:3000
-- **PostgreSQL**: `localhost:5432` (use connection string in app)
-- **Redis**: `localhost:6379` (use connection string in app)
-
-### Environment Variables
-
-The `docker-compose.yml` sets the following environment variables in the Next.js container:
-
-```yaml
-DATABASE_URL=postgresql://postgres:password@db:5432/trivengers_db
-REDIS_URL=redis://redis:6379
-NODE_ENV=production
-```
-
-**Important:** Change the default PostgreSQL password in production. Update both `docker-compose.yml` and your `.env.local` file.
-
-### Common Commands
-
-#### View Container Logs
+#### 3. View Logs
 
 ```bash
 # All services
@@ -1533,327 +394,387 @@ docker-compose logs -f
 
 # Specific service
 docker-compose logs -f app
-docker-compose logs -f db
-docker-compose logs -f redis
 ```
 
-#### Stop All Services
+#### 4. Stop Services
 
 ```bash
 docker-compose down
 ```
 
-#### Stop and Remove Data
+#### 5. Stop and Remove Volumes (⚠️ Deletes database data)
 
 ```bash
-# Warning: This deletes the database!
 docker-compose down -v
 ```
 
-#### Restart Services
+### Docker Services Overview
 
-```bash
-docker-compose restart
-```
+| Service | Port | Description |
+|---------|------|-------------|
+| **app** | 3000 | Next.js application |
+| **db** | 5432 | PostgreSQL database |
+| **redis** | 6379 | Redis cache |
 
-#### Execute Commands in Container
+### Docker Environment Variables
 
-```bash
-# Access Next.js app container
-docker-compose exec app sh
-
-# Access PostgreSQL container
-docker-compose exec db psql -U postgres -d trivengers_db
-
-# Access Redis container
-docker-compose exec redis redis-cli
-```
-
-### Troubleshooting
-
-#### Issue: Port Already in Use
-
-**Problem**: "Port 3000 is already allocated"
-
-**Solution**: Change ports in `docker-compose.yml`:
+The `docker-compose.yml` file uses these environment variables:
 
 ```yaml
-app:
-  ports:
-    - "3001:3000" # Use 3001 instead
+DATABASE_URL: postgresql://postgres:password@db:5432/trivengers_db
+REDIS_URL: redis://redis:6379
+NODE_ENV: production
+```
+
+> **Security Note**: Change the default PostgreSQL password in production deployments.
+
+---
+
+## 📚 API Documentation
+
+### Authentication Endpoints
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| POST | `/api/auth/signup` | Register new user | ❌ |
+| POST | `/api/auth/login` | Login and get JWT token | ❌ |
+| GET | `/api/auth/me` | Get current user profile | ✅ |
+
+### User Endpoints
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| GET | `/api/users` | List all users (paginated) | ✅ |
+| GET | `/api/users/[id]` | Get user by ID | ✅ |
+| PUT | `/api/users/[id]` | Update user | ✅ |
+| DELETE | `/api/users/[id]` | Delete user | ✅ |
+
+### Lesson Endpoints
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| GET | `/api/lessons` | List all lessons | ✅ |
+| GET | `/api/lessons/[id]` | Get lesson by ID | ✅ |
+| POST | `/api/lessons` | Create new lesson | ✅ (Teacher) |
+| PUT | `/api/lessons/[id]` | Update lesson | ✅ (Teacher) |
+| DELETE | `/api/lessons/[id]` | Delete lesson | ✅ (Teacher) |
+
+### Quiz Endpoints
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| GET | `/api/quizzes` | List all quizzes | ✅ |
+| GET | `/api/quizzes/[id]` | Get quiz by ID | ✅ |
+| POST | `/api/quizzes` | Create new quiz | ✅ (Teacher) |
+| POST | `/api/quiz-results` | Submit quiz result | ✅ |
+
+### File Upload Endpoints
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| POST | `/api/upload` | Generate S3 pre-signed URL | ✅ |
+| POST | `/api/files` | Store file metadata | ✅ |
+| GET | `/api/files` | Get user's files | ✅ |
+| DELETE | `/api/files` | Delete file | ✅ |
+
+### Example API Requests
+
+#### Register a New User
+
+```bash
+curl -X POST http://localhost:3000/api/auth/signup \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "John Doe",
+    "email": "john@example.com",
+    "password": "SecurePass123",
+    "role": "STUDENT"
+  }'
+```
+
+#### Login
+
+```bash
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "john@example.com",
+    "password": "SecurePass123"
+  }'
+```
+
+#### Access Protected Route
+
+```bash
+curl -X GET http://localhost:3000/api/auth/me \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+---
+
+## 🧪 Testing
+
+### Running Tests
+
+```bash
+# Run all tests
+npm test
+
+# Run tests in watch mode
+npm test -- --watch
+
+# Run tests with coverage
+npm test -- --coverage
+```
+
+### Test Structure
+
+```
+rurallite/
+├── __tests__/                  # Component tests
+│   ├── Button.test.jsx
+│   └── helpers.test.js
+└── tests/                      # Unit tests
+    ├── errorHandler.test.ts
+    ├── logger.test.ts
+    └── responseHandler.test.ts
+```
+
+### Writing Tests
+
+Example component test:
+
+```javascript
+import { render, screen } from '@testing-library/react';
+import Button from '@/components/Button';
+
+describe('Button Component', () => {
+  it('renders button with text', () => {
+    render(<Button>Click Me</Button>);
+    expect(screen.getByText('Click Me')).toBeInTheDocument();
+  });
+});
+```
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions from the community! Follow these steps to contribute:
+
+### 1. Fork the Repository
+
+Click the "Fork" button at the top right of the repository page.
+
+### 2. Clone Your Fork
+
+```bash
+git clone https://github.com/your-username/S86-1225-TriVengers-Full-Stack-With-NextjsAnd-AWS-Azure-RuralLite.git
+cd S86-1225-TriVengers-Full-Stack-With-NextjsAnd-AWS-Azure-RuralLite
+```
+
+### 3. Create a Feature Branch
+
+```bash
+git checkout -b feature/your-feature-name
+```
+
+### Branch Naming Conventions
+
+| Type | Pattern | Example |
+|------|---------|---------|
+| Feature | `feature/<name>` | `feature/add-notifications` |
+| Bug Fix | `fix/<name>` | `fix/login-redirect` |
+| Chore | `chore/<name>` | `chore/update-deps` |
+| Docs | `docs/<name>` | `docs/api-guide` |
+
+### 4. Make Your Changes
+
+- Write clean, well-documented code
+- Follow existing code style and conventions
+- Add tests for new features
+- Update documentation as needed
+
+### 5. Commit Your Changes
+
+```bash
+git add .
+git commit -m "feat: add notification system"
+```
+
+### Commit Message Format
+
+Follow the [Conventional Commits](https://www.conventionalcommits.org/) standard:
+
+- `feat:` New feature
+- `fix:` Bug fix
+- `docs:` Documentation changes
+- `style:` Code style changes (formatting, etc.)
+- `refactor:` Code refactoring
+- `test:` Adding or updating tests
+- `chore:` Maintenance tasks
+
+### 6. Push to Your Fork
+
+```bash
+git push origin feature/your-feature-name
+```
+
+### 7. Create a Pull Request
+
+- Go to the original repository
+- Click "New Pull Request"
+- Select your branch
+- Fill in the PR template with details about your changes
+- Submit the PR for review
+
+### Code Review Process
+
+- At least one team member must review and approve the PR
+- All tests must pass
+- No linting errors
+- Documentation must be updated if needed
+
+---
+
+## 📝 License
+
+This project is licensed under the **MIT License**.
+
+```
+MIT License
+
+Copyright (c) 2024-2025 Team TriVengers (RuralLite Project)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+---
+
+## 🆘 Troubleshooting
+
+### Common Issues
+
+#### Issue: "Cannot find module 'next'"
+
+**Solution**: You're running commands from the wrong directory. Navigate to `rurallite/` first:
+
+```bash
+cd rurallite
+npm install
+npm run dev
 ```
 
 #### Issue: Database Connection Error
 
-**Problem**: "Cannot connect to postgres database"
-
-**Solution**:
-
-1. Ensure `db` service is running: `docker ps`
-2. Check database logs: `docker-compose logs db`
-3. Wait for health check to pass (takes ~10 seconds)
-
-#### Issue: Slow Docker Builds
-
-**Problem**: First build takes several minutes
-
-**Solutions**:
-
-- Ensure stable internet (downloading images)
-- Use `.dockerignore` to exclude unnecessary files
-- Add build cache: `docker builder prune --all`
-
-#### Issue: Permission Errors
-
-**Problem**: "Permission denied" on Windows with WSL2
-
-**Solution**:
+**Solution**: Ensure PostgreSQL is running and the `DATABASE_URL` in `.env.local` is correct:
 
 ```bash
-# Run Docker Desktop with WSL2 backend
-# Settings > Resources > WSL integration
+# Check if PostgreSQL is running
+# Windows
+Get-Service postgresql*
+
+# Linux/Mac
+sudo systemctl status postgresql
 ```
 
-#### Issue: Redis Connection Failed
+#### Issue: Port 3000 Already in Use
 
-**Problem**: "Cannot connect to redis://redis:6379"
+**Solution**: Either stop the process using port 3000 or change the port:
 
-**Solution**:
+```bash
+# Find process using port 3000
+# Windows
+netstat -ano | findstr :3000
 
-1. Check Redis health: `docker-compose logs redis`
-2. Verify network: `docker network inspect localnet`
-3. Restart Redis: `docker-compose restart redis`
+# Kill the process (replace PID with actual process ID)
+taskkill /PID <PID> /F
 
-### Production Considerations
+# Or run on a different port
+PORT=3001 npm run dev
+```
 
-#### Security
+#### Issue: Prisma Client Not Generated
 
-- **Change Credentials**: Don't use `password` in production
-- **Use Secrets**: Store sensitive values in `.env` files (never committed)
-- **Network Policies**: Restrict service access with firewall rules
-- **SSL/TLS**: Enable encrypted connections to PostgreSQL
+**Solution**: Generate the Prisma client:
 
-#### Performance
+```bash
+cd rurallite
+npx prisma generate
+```
 
-- **Multi-stage Builds**: Reduce image size with multi-stage Dockerfile
-- **Resource Limits**: Set memory and CPU limits for containers
-- **Caching Strategy**: Implement layer caching for faster builds
+#### Issue: Authentication Token Expired
+
+**Solution**: Login again to get a new token. Tokens expire after 24 hours by default.
 
 ---
 
-## 🚀 Cloud Deployment
+## 📞 Support & Contact
 
-RuralLite supports containerized deployment to major cloud platforms:
+For questions, issues, or suggestions:
 
-### Quick Deployment
-
-#### AWS ECS (Elastic Container Service)
-```bash
-# Automated deployment script
-./deploy-aws.sh
-```
-
-#### Azure App Service for Containers
-```bash
-# PowerShell deployment script  
-./deploy-azure.ps1
-```
-
-### Deployment Features
-
-✅ **Multi-stage Docker builds** for optimized image size  
-✅ **Auto-scaling** based on CPU/memory usage  
-✅ **Health checks** and monitoring  
-✅ **CI/CD pipelines** with GitHub Actions  
-✅ **Zero-downtime deployments**  
-✅ **HTTPS enforcement** and security headers  
-
-### Supported Platforms
-
-| Platform | Service | Description |
-|----------|---------|-------------|
-| **AWS** | ECS Fargate | Serverless container orchestration |
-| **Azure** | App Service | Managed container hosting |
-
-### 📋 Prerequisites for Cloud Deployment
-
-- Docker installed locally
-- Cloud CLI configured (AWS CLI or Azure CLI)
-- Container registry access (ECR or ACR)
-- GitHub repository secrets configured
-
-### 📚 Detailed Deployment Guide
-
-For comprehensive deployment instructions, configuration options, monitoring setup, and troubleshooting:
-
-👉 **[View Complete Deployment Guide](./DEPLOYMENT.md)**
-
-The deployment guide covers:
-- Step-by-step setup for AWS ECS and Azure App Service
-- CI/CD pipeline configuration
-- Environment variable management
-- Auto-scaling configuration
-- Monitoring and logging setup
-- Security best practices
-- Troubleshooting common issues
+- **GitHub Issues**: [Create an issue](https://github.com/your-username/S86-1225-TriVengers-Full-Stack-With-NextjsAnd-AWS-Azure-RuralLite/issues)
+- **Email Team Leader**: harikrishna@example.com
+- **Documentation**: Check the `/docs` folder for detailed guides
 
 ---
 
-## 🌐 Domain & SSL Setup
+## 🙏 Acknowledgments
 
-Secure your production deployment with custom domain and SSL certificates:
-
-### Quick Setup
-
-#### AWS Route 53 & Certificate Manager
-```bash
-# Automated setup script
-./setup-domain-aws.ps1 -DomainName "yourdomain.com"
-```
-
-#### Azure DNS & App Service Certificates  
-```bash
-# Azure domain setup
-./setup-domain-azure.ps1 -DomainName "yourdomain.com"
-```
-
-### Security Features
-
-✅ **Automatic HTTPS redirects** from HTTP traffic  
-✅ **SSL/TLS encryption** with industry-standard certificates  
-✅ **Security headers** (HSTS, CSP, X-Frame-Options)  
-✅ **DNS management** with cloud-native services  
-✅ **Certificate auto-renewal** to prevent expiration  
-
-### Domain & SSL Features
-
-| Feature | AWS | Azure |
-|---------|-----|--------|
-| **DNS Management** | Route 53 | Azure DNS |
-| **SSL Certificates** | ACM (Auto-renewing) | App Service Managed |
-| **CDN Integration** | CloudFront Ready | Azure CDN Ready |
-| **Validation** | DNS/Email | Domain Verification |
-
-### 📋 Domain Setup Process
-
-1. **Configure DNS**: Point your domain to cloud infrastructure
-2. **Request SSL Certificate**: Automated certificate provisioning  
-3. **Domain Validation**: Verify ownership via DNS records
-4. **HTTPS Enforcement**: Redirect all traffic to secure connections
-5. **Security Headers**: Implement modern web security standards
-
-### 📚 Detailed Domain & SSL Guide
-
-For complete domain and SSL configuration instructions:
-
-👉 **[View Domain & SSL Setup Guide](./DOMAIN-SSL-SETUP.md)**
-
-The guide includes:
-- Step-by-step DNS configuration
-- SSL certificate provisioning and binding
-- Security headers and HTTPS enforcement
-- Domain validation and testing procedures
-- Troubleshooting common DNS/SSL issues
-
-### Validation Tools
-
-```bash
-# Test your domain and SSL setup
-./validate-domain-ssl.ps1 -DomainName "yourdomain.com"
-```
-
-The validation script checks:
-- DNS resolution and propagation
-- HTTP to HTTPS redirects
-- SSL certificate validity and security
-- Security headers implementation
-- Performance and health endpoints
-
----
-- Security best practices
-- Troubleshooting common issues
-
-### Environment Configuration
-
-Production deployments require proper environment configuration:
-
-```bash
-# Copy environment template
-cp .env.example .env.production
-
-# Configure your production values
-# - Database connections
-# - Authentication secrets  
-# - Cloud service credentials
-# - API keys and external services
-```
+- **Kalvium** for providing the platform and guidance
+- **Open Source Community** for the amazing tools and libraries
+- **Rural Schools** that inspired this project
+- All contributors and supporters of the RuralLite mission
 
 ---
 
-#### Example Production Compose (Snippet)
+## 🗺️ Roadmap
 
-```yaml
-db:
-  image: postgres:15-alpine
-  restart: always
-  environment:
-    POSTGRES_USER: ${DB_USER}
-    POSTGRES_PASSWORD: ${DB_PASSWORD} # From .env, never hardcoded
-  volumes:
-    - db_data:/var/lib/postgresql/data
-  networks:
-    - localnet
-  healthcheck:
-    test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
-```
+### Phase 1 - Core Features ✅
+- [x] User authentication and authorization
+- [x] Lesson management system
+- [x] Quiz and assessment functionality
+- [x] Offline-first architecture
+- [x] File upload with AWS S3
 
-### Health Checks
+### Phase 2 - Enhanced Features 🚧
+- [ ] Video content support
+- [ ] Real-time chat between students and teachers
+- [ ] Advanced analytics dashboard
+- [ ] Mobile app (React Native)
+- [ ] Multi-language support
 
-All services include health checks that automatically restart failed containers:
-
-- **App**: HTTP GET to `localhost:3000` every 30 seconds
-- **Database**: PostgreSQL ready check every 10 seconds
-- **Redis**: `redis-cli ping` every 10 seconds
-
-This ensures high availability during local development.
-
-### Reflection & Lessons Learned
-
-#### Challenges Faced
-
-1. **Image Size Optimization**
-   - Initially used `node:20` (900MB+), switched to `node:20-alpine` (150MB)
-   - Result: 6x smaller images and faster downloads
-
-2. **Service Dependencies**
-   - Race condition where app started before PostgreSQL was ready
-   - **Solution**: Added `healthcheck` to ensure database is ready before app connects
-
-3. **Network Configuration**
-   - Container-to-container communication requires proper networking
-   - Used custom bridge network (`localnet`) for service discovery
-
-4. **Volume Management**
-   - Data was lost when containers were removed
-   - **Solution**: Named volume `db_data` persists PostgreSQL data across restarts
-
-5. **Environment Variables**
-   - Hardcoded credentials posed security risks
-   - Implemented environment-based configuration for flexibility
-
-#### Key Takeaways
-
-✅ **Docker ensures consistency** across development, testing, and production environments  
-✅ **Docker Compose simplifies** multi-service orchestration and team collaboration  
-✅ **Health checks prevent** service dependency issues and race conditions  
-✅ **Volumes enable** data persistence between container restarts  
-✅ **Named containers** make logs and debugging easier to track
-
-#### Next Steps
-
-- Implement CI/CD pipeline (GitHub Actions) to build and push images
-- Add database migration scripts to initialize schema
-- Configure environment-specific compose files (`docker-compose.dev.yml`, `docker-compose.prod.yml`)
-- Document deployment to cloud services (AWS ECS, Azure Container Instances)
+### Phase 3 - Scale & Performance 📋
+- [ ] Load balancing and horizontal scaling
+- [ ] CDN integration for static assets
+- [ ] Advanced caching strategies
+- [ ] Performance monitoring and optimization
+- [ ] Automated testing and deployment
 
 ---
+
+<div align="center">
+
+**Built with ❤️ by Team TriVengers**
+
+⭐ Star this repository if you find it helpful!
+
+[Report Bug](https://github.com/your-username/S86-1225-TriVengers-Full-Stack-With-NextjsAnd-AWS-Azure-RuralLite/issues) · [Request Feature](https://github.com/your-username/S86-1225-TriVengers-Full-Stack-With-NextjsAnd-AWS-Azure-RuralLite/issues) · [Documentation](./docs)
+
+</div>

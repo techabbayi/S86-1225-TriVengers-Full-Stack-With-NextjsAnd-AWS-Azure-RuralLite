@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { toast } from "react-hot-toast";
 import useSWR from "swr";
@@ -7,46 +7,46 @@ import ConfirmModal from "@/components/ui/ConfirmModal";
 import Navbar from "@/components/Navbar";
 import AuthGuard from "@/components/AuthGuard";
 import { useAuth } from "@/hooks/useAuth";
-
-const fetcher = async (url) => {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error("Failed to fetch");
-  const json = await res.json();
-  return json.data;
-};
+import { fetcher, swrConfig } from "@/lib/fetcher";
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
 
-  // Fetch real analytics data
-  const { data: quizHistory } = useSWR("/api/quiz-history", fetcher);
-  const { data: progress } = useSWR("/api/progress", fetcher);
-  const { data: quizzes } = useSWR("/api/quizzes", fetcher);
+  // Fetch real analytics data with optimized SWR config
+  const { data: quizHistory } = useSWR("/api/quiz-history", fetcher, swrConfig);
+  const { data: progress } = useSWR("/api/progress", fetcher, swrConfig);
+  const { data: quizzes } = useSWR("/api/quizzes", fetcher, swrConfig);
 
-  // Calculate lessons completed based on quiz history (70%+ pass rate)
-  const calculateLessonsCompleted = () => {
+  // Memoize expensive calculations
+  const lessonsCompleted = useMemo(() => {
     if (!quizHistory || !quizzes) return 0;
 
-    // Get unique subjects from quiz history where user passed (70%+)
     const passedSubjects = new Set();
-    quizHistory.forEach(attempt => {
+    quizHistory.forEach((attempt) => {
       if (attempt.percentage >= 70) {
         passedSubjects.add(attempt.subject);
       }
     });
 
     return passedSubjects.size;
-  };
+  }, [quizHistory, quizzes]);
 
-  // Calculate real statistics
-  const stats = {
-    lessonsCompleted: calculateLessonsCompleted(),
-    quizzesTaken: quizHistory?.length || 0,
-    averageScore: quizHistory?.length > 0
-      ? Math.round(quizHistory.reduce((sum, quiz) => sum + quiz.percentage, 0) / quizHistory.length)
-      : 0
-  };
+  // Memoize stats calculation
+  const stats = useMemo(
+    () => ({
+      lessonsCompleted,
+      quizzesTaken: quizHistory?.length || 0,
+      averageScore:
+        quizHistory?.length > 0
+          ? Math.round(
+              quizHistory.reduce((sum, quiz) => sum + quiz.percentage, 0) /
+                quizHistory.length
+            )
+          : 0,
+    }),
+    [lessonsCompleted, quizHistory]
+  );
 
   const handleDelete = async () => {
     setOpen(false);
